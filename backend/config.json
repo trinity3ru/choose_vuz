@@ -1,0 +1,387 @@
+{
+  "universities": [
+    {
+      "code": "SPBSTU",
+      "name": "Санкт-Петербургский политехнический университет Петра Великого",
+      "url": "https://my.spbstu.ru/home/abit/list-applicants/bachelor",
+      "enabled": true,
+      "majors": [
+        {
+          "code": "09.03.04",
+          "name": "Программная инженерия",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        },
+        {
+          "code": "09.03.01",
+          "name": "Информатика и вычислительная техника",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        },
+        {
+          "code": "03.03.02",
+          "name": "Физика",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        },
+        {
+          "code": "01.03.02",
+          "name": "Прикладная математика и информатика",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        },
+        {
+          "code": "01.03.03",
+          "name": "Механика и математическое моделирование",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        },
+        {
+          "code": "03.03.01",
+          "name": "Прикладные математика и физика",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        },
+        {
+          "code": "15.03.03",
+          "name": "Прикладная механика",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        },
+        {
+          "code": "16.03.01",
+          "name": "Техническая физика",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        },
+        {
+          "code": "15.03.06",
+          "name": "Мехатроника и робототехника",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        },
+        {
+          "code": "15.03.04",
+          "name": "Автоматизация технологических процессов и производств",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        },
+        {
+          "code": "13.03.02",
+          "name": "Электроэнергетика и электротехника",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        },
+        {
+          "code": "03.03.01",
+          "name": "Прикладные математика и физика",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        },
+        {
+          "code": "27.03.04",
+          "name": "Управление в технических системах",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        },
+        {
+          "code": "09.03.02",
+          "name": "Информационные системы и технологии",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        }
+      ]
+    },
+    {
+      "code": "SUT",
+      "name": "Санкт-Петербургский государственный университет телекоммуникаций им. проф. М.А. Бонч-Бруевича",
+      "url": "https://priem.sut.ru/spisok-abiturientov",
+      "enabled": true,
+      "majors": [
+        {
+          "code": "11.03.02",
+          "name": "Инфокоммуникационные технологии и системы связи",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        },
+        {
+          "code": "15.03.06",
+          "name": "Мехатроника и робототехника",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        }
+      ]
+    },
+    {
+      "code": "SAMARA",
+      "name": "Самарский национальный исследовательский университет имени академика С.П. Королёва",
+      "url": "https://priemsamara.ru/ratings/",
+      "enabled": true,
+      "majors": [
+        {
+          "code": "03.03.01",
+          "name": "Прикладные математика и физика",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          },
+          "external_id": "10"
+        },
+        {
+          "code": "01.03.02",
+          "name": "Прикладная математика и информатика",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          },
+          "external_id": "2"
+        },
+        {
+          "code": "03.03.02",
+          "name": "Физика",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          },
+          "external_id": "11"
+        },
+        {
+          "code": "02.03.01",
+          "name": "Математика и компьютерные науки",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          },
+          "external_id": "7"
+        }
+      ]
+    },
+    {
+      "code": "SAMGTU",
+      "name": "Самарский государственный технический университет (Самарский политех)",
+      "url": "https://samgtu.ru/admission/competetivegroup",
+      "enabled": true,
+      "majors": [
+        {
+          "code": "21.05.05",
+          "name": "Физические процессы горного или нефтегазового производства",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        },
+        {
+          "code": "21.03.01",
+          "name": "Нефтегазовое дело",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        },
+        {
+          "code": "09.03.04",
+          "name": "Программная инженерия",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        },
+        {
+          "code": "09.03.03",
+          "name": "Прикладная информатика",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        },
+        {
+          "code": "01.03.02",
+          "name": "Прикладная математика и информатика",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        }
+      ]
+    },
+    {
+      "code": "SPBGU",
+      "name": "Санкт-Петербургский государственный университет",
+      "url": "https://enrollelists.spbu.ru/reports/PriemList02.php",
+      "enabled": true,
+      "majors": [
+        {
+          "code": "03.03.02",
+          "name": "Физика",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        },
+        {
+          "code": "03.03.01",
+          "name": "Прикладные математика и физика",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        },
+        {
+          "code": "09.03.03",
+          "name": "Прикладная информатика",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TLTSU",
+      "name": "Тольяттинский государственный университет",
+      "url": "http://edu.tltsu.ru:8888/birt-viewer-4.55/preview?__report=entr_contest.rptdesign&dep=80010000000AD337&et=bbo&year=2026&or=0&regd=0&__format=html",
+      "enabled": true,
+      "majors": [
+        {
+          "code": "01.03.02",
+          "name": "Прикладная математика и информатика",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        },
+        {
+          "code": "09.03.03",
+          "name": "Прикладная информатика",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        },
+        {
+          "code": "09.03.04",
+          "name": "Программная инженерия",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          }
+        }
+      ]
+    },
+    {
+      "code": "LETI",
+      "name": "Санкт-Петербургский государственный электротехнический университет «ЛЭТИ»",
+      "url": "https://abit.etu.ru/ru/postupayushhim/lists/page/list",
+      "enabled": true,
+      "majors": [
+        {
+          "code": "11.03.02",
+          "name": "Инфокоммуникационные технологии и системы связи",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          },
+          "external_id": "019ee537-60b6-7cd9-9d90-6735f5437724"
+        },
+        {
+          "code": "12.03.04",
+          "name": "Биотехнические системы и технологии",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          },
+          "external_id": "019ee537-60b6-7999-9d90-6735ee4cfcd5"
+        }
+      ]
+    },
+    {
+      "code": "MPEI",
+      "name": "Национальный исследовательский университет «МЭИ»",
+      "url": "https://pk.mpei.ru/info/entrants_list.html",
+      "enabled": true,
+      "majors": [
+        {
+          "code": "14.03.01",
+          "name": "Ядерная энергетика и теплофизика",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          },
+          "external_id": "entrants_list7.html"
+        },
+        {
+          "code": "01.03.02",
+          "name": "Прикладная математика и информатика",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          },
+          "external_id": "entrants_list16.html"
+        },
+        {
+          "code": "09.03.01",
+          "name": "Информатика и вычислительная техника",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          },
+          "external_id": "entrants_list14.html"
+        },
+        {
+          "code": "09.03.03",
+          "name": "Прикладная информатика",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          },
+          "external_id": "entrants_list35.html"
+        },
+        {
+          "code": "12.03.04",
+          "name": "Биотехнические системы и технологии",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          },
+          "external_id": "entrants_list15.html"
+        }
+      ]
+    }
+  ],
+  "parser_settings": {
+    "parse_interval_hours": 4,
+    "request_delay_seconds": 1.5
+  }
+}

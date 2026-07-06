@@ -1,0 +1,21 @@
+# Веб-фреймворк и ASGI-сервер
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+# Работа с PostgreSQL (асинхронно) + миграции
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+
+# Парсер: браузерная сессия и CSRF-токен
+playwright==1.49.1
+
+# Периодический запуск задач
+apscheduler==3.11.0
+
+# Валидация конфига и данных, чтение настроек из .env
+pydantic==2.10.4
+pydantic-settings==2.7.0
+
+# Разбор HTML-таблиц (нужен для парсера СПбГУТ, который отдаёт HTML)
+beautifulsoup4==4.12.3

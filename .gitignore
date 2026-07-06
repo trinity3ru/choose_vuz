@@ -1,0 +1,28 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Python / backend
+backend/.env
+backend/.venv/
+backend/__pycache__/
+backend/logs/
+backend/*.html
+backend/*.js
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+
+# IDE / OS
+.idea/
+.vscode/
+*.log
+Thumbs.db

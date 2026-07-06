@@ -1,0 +1,132 @@
+"""
+Раннер парсера: связывает конфиг, парсер и сохранение в БД.
+
+Отвечает за:
+- выбор парсера по коду вуза (реестр парсеров — расширяется под новые вузы);
+- запуск парсинга и сохранение результата;
+- защиту от одновременных запусков (один парсинг в момент времени).
+"""
+
+import logging
+
+from app.core.config_loader import load_config
+from app.parser.base import BaseParser
+from app.parser.leti import LetiParser
+from app.parser.mpei import MpeiParser
+from app.parser.samara import SamaraParser
+from app.parser.samgtu import SamgtuParser
+from app.parser.spbgu import SpbguParser
+from app.parser.spbstu import SpbstuParser
+from app.parser.sut import SutParser
+from app.parser.tltsu import TltsuParser
+from app.services.storage import save_parse_result
+
+logger = logging.getLogger(__name__)
+
+# Реестр парсеров: код вуза -> класс парсера.
+# Чтобы добавить новый вуз, достаточно написать класс и внести его сюда.
+PARSER_REGISTRY: dict[str, type[BaseParser]] = {
+    "SPBSTU": SpbstuParser,
+    "SUT": SutParser,
+    "SAMARA": SamaraParser,
+    "SAMGTU": SamgtuParser,
+    "SPBGU": SpbguParser,
+    "TLTSU": TltsuParser,
+    "LETI": LetiParser,
+    "MPEI": MpeiParser,
+}
+
+# Флаг «парсинг идёт». Приложение однопоточное (asyncio), поэтому простой
+# булев флаг безопасен: проверка и установка ниже происходят без await между ними.
+_running = False
+
+
+class ParserBusyError(Exception):
+    """Парсинг уже выполняется — новый запуск отклонён."""
+
+    pass
+
+
+def is_running() -> bool:
+    """Идёт ли парсинг прямо сейчас."""
+    return _running
+
+
+def try_begin() -> bool:
+    """
+    Атомарно занять парсер, если он свободен.
+
+    :return: True — успешно заняли (можно запускать); False — уже идёт парсинг.
+    """
+    global _running
+    if _running:
+        return False
+    _running = True
+    return True
+
+
+def end() -> None:
+    """Освободить парсер после завершения работы."""
+    global _running
+    _running = False
+
+
+async def run_parser(major_code: str | None = None) -> list[dict]:
+    """
+    Запустить парсинг с захватом флага (для планировщика и прямого вызова).
+
+    :raises ParserBusyError: если парсинг уже идёт.
+    """
+    if not try_begin():
+        raise ParserBusyError("Парсинг уже выполняется")
+    try:
+        return await execute(major_code)
+    finally:
+        end()
+
+
+async def execute(major_code: str | None = None) -> list[dict]:
+    """
+    Выполнить парсинг всех включённых вузов из конфига (без захвата флага).
+
+    Используется, когда флаг уже занят вызывающей стороной (например, из API,
+    который занимает флаг синхронно ещё до старта фоновой задачи).
+
+    :param major_code: если указан — парсить только это направление.
+    :return: список кратких итогов по снимкам (для ответа API).
+    """
+    config = load_config()
+    summaries: list[dict] = []
+
+    for university in config.universities:
+        if not university.enabled:
+            continue
+
+        parser_cls = PARSER_REGISTRY.get(university.code)
+        if parser_cls is None:
+            logger.warning("Нет парсера для вуза %s — пропуск", university.code)
+            continue
+
+        # Если задано направление — оставляем в конфиге только его.
+        uni_config = university
+        if major_code is not None:
+            filtered = [m for m in university.majors if m.code == major_code]
+            if not filtered:
+                continue
+            uni_config = university.model_copy(update={"majors": filtered})
+
+        parser = parser_cls(uni_config, config.parser_settings.request_delay_seconds)
+        result = await parser.parse()
+        snapshot = await save_parse_result(uni_config, result)
+
+        summaries.append(
+            {
+                "university": university.code,
+                "snapshot_id": str(snapshot.id),
+                "status": snapshot.status,
+                "majors_parsed": len(result.majors),
+                "errors": result.errors,
+            }
+        )
+
+    return summaries
