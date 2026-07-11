@@ -3,20 +3,21 @@
 
 Данные на странице kpfu.ru встроены через iframe abiturient.kpfu.ru.
 Фильтр работает GET-параметрами (перезагрузка страницы), без AJAX — браузер
-не нужен, используем HTTP-клиент Playwright.
+не нужен, обычные запросы через httpx.
+
+Ответ сайта чаще в cp1251, поэтому декодируем тело сами (kpfu_mapping.decode_html).
 
 external_id в конфиге = id института (p_faculty). id программы (p_speciality)
 находим по коду направления в выпадающем списке.
 """
 
-import asyncio
 import logging
+from typing import Any
 from urllib.parse import urlencode
 
-from playwright.async_api import async_playwright
+import httpx
 
-from app.core.config import settings
-from app.parser.base import BaseParser
+from app.parser.http_base import HttpParser, raise_for_status
 from app.parser.kpfu_mapping import (
     decode_html,
     parse_main_competition,
@@ -24,12 +25,11 @@ from app.parser.kpfu_mapping import (
     pick_speciality_id,
 )
 from app.schemas.config_schema import MajorConfig
-from app.schemas.parser_schema import MajorResult, MajorSummary, ParseResult
+from app.schemas.parser_schema import MajorResult, MajorSummary
 
 logger = logging.getLogger(__name__)
 
 _LIST_PATH = "/entrant/abit_entrant_originals_list"
-_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 
 # Фиксированные коды формы для бакалавриата, очной, бюджета, основного кампуса.
 _LEVEL_BACHELOR = "1"
@@ -38,41 +38,11 @@ _CATEGORY_BUDGET = "1"
 _STUDY_FULLTIME = "1"
 
 
-class KpfuParser(BaseParser):
-    """Парсер КФУ. Реализует интерфейс BaseParser.parse()."""
+class KpfuParser(HttpParser):
+    """Парсер КФУ. Реализует интерфейс HttpParser."""
 
-    async def parse(self) -> ParseResult:
-        """Собрать все направления вуза через GET HTML-страниц."""
-        result = ParseResult(university_code=self.university.code)
-        base_host = self._list_host()
-
-        async with async_playwright() as pw:
-            rc = await pw.request.new_context(
-                extra_http_headers={
-                    "User-Agent": _USER_AGENT,
-                    "Referer": str(self.university.url),
-                },
-                timeout=settings.browser_timeout_ms,
-            )
-            try:
-                for major in self.university.majors:
-                    try:
-                        major_result = await self._parse_major(rc, base_host, major)
-                        result.majors.append(major_result)
-                    except Exception as exc:  # noqa: BLE001
-                        msg = f"Направление {major.code}: {exc}"
-                        logger.exception(msg)
-                        result.errors.append(msg)
-                    await asyncio.sleep(self.request_delay_seconds)
-            except Exception as exc:  # noqa: BLE001
-                msg = f"Критическая ошибка парсинга {self.university.code}: {exc}"
-                logger.exception(msg)
-                result.errors.append(msg)
-            finally:
-                await rc.dispose()
-
-        result.status = self._compute_status(result)
-        return result
+    def extra_headers(self) -> dict[str, str]:
+        return {"Referer": str(self.university.url)}
 
     def _list_host(self) -> str:
         """Базовый URL API списков (iframe abiturient.kpfu.ru)."""
@@ -81,17 +51,16 @@ class KpfuParser(BaseParser):
             return url.split("/entrant/")[0]
         return "https://abiturient.kpfu.ru"
 
-    async def _fetch_html(self, rc, url: str) -> str:
-        resp = await rc.get(url)
-        if not resp.ok:
-            raise RuntimeError(f"запрос вернул статус {resp.status}: {url}")
-        return decode_html(await resp.body())
+    async def _fetch_html(self, client: httpx.AsyncClient, url: str) -> str:
+        resp = await client.get(url)
+        raise_for_status(resp, f"запрос {url}")
+        return decode_html(resp.content)
 
     def _build_url(self, base_host: str, params: dict[str, str]) -> str:
         return f"{base_host}{_LIST_PATH}?{urlencode(params)}"
 
     async def _resolve_speciality_id(
-        self, rc, base_host: str, faculty_id: str, code: str
+        self, client: httpx.AsyncClient, base_host: str, faculty_id: str, code: str
     ) -> tuple[str, str]:
         """Получить p_speciality по коду направления."""
         url = self._build_url(
@@ -103,16 +72,19 @@ class KpfuParser(BaseParser):
                 "p_category": _CATEGORY_BUDGET,
             },
         )
-        html = await self._fetch_html(rc, url)
+        html = await self._fetch_html(client, url)
         spec_id, title = pick_speciality_id(parse_select_options(html, "p_speciality"), code)
         return spec_id, title
 
-    async def _parse_major(self, rc, base_host: str, major: MajorConfig) -> MajorResult:
+    async def _parse_major(
+        self, client: httpx.AsyncClient, major: MajorConfig, context: Any
+    ) -> MajorResult:
         if not major.external_id:
             raise RuntimeError("не задан external_id (id института p_faculty) в конфиге")
 
+        base_host = self._list_host()
         spec_id, _ = await self._resolve_speciality_id(
-            rc, base_host, major.external_id, major.code
+            client, base_host, major.external_id, major.code
         )
         url = self._build_url(
             base_host,
@@ -125,7 +97,7 @@ class KpfuParser(BaseParser):
                 "p_category": _CATEGORY_BUDGET,
             },
         )
-        html = await self._fetch_html(rc, url)
+        html = await self._fetch_html(client, url)
         places, applicants = parse_main_competition(html)
         if not applicants:
             raise RuntimeError("таблица общего конкурса пуста или не найдена")
@@ -143,11 +115,3 @@ class KpfuParser(BaseParser):
             summary=summary,
             applicants=applicants,
         )
-
-    @staticmethod
-    def _compute_status(result: ParseResult) -> str:
-        if not result.errors:
-            return "success"
-        if result.majors:
-            return "partial"
-        return "failed"

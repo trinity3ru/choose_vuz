@@ -1,31 +1,52 @@
-node_modules/
-build/
-dist/
-coverage/
-.DS_Store
-*.log
-.env*
+# --- Секреты ---
+.env
+.env.*
 !.env.example
-
-# Python / backend
 backend/.env
+
+# --- Python / backend ---
 backend/.venv/
+**/.venv/
 **/__pycache__/
 *.pyc
 backend/logs/
+
+# Отладочные дампы разведки сайтов (не для репозитория)
 backend/*.html
 backend/*.js
+backend/scripts/*.html
+backend/*_sample.json
+backend/scripts/*_sample.json
+backend/itmo_api.json
 
-# Node / frontend
-frontend/node_modules/
+# --- Node / frontend ---
+node_modules/
+**/node_modules/
 frontend/dist/
-frontend/.env
-frontend/.env.local
+frontend/tsconfig.tsbuildinfo
+build/
+coverage/
 
-# IDE / OS
+# --- Деплой: локальные данные VPS ---
+parser-logs/
+parser-screenshots/
+backups/
+postgres-data/
+locks/
+
+# --- Локальные проекты вне деплоя VuzFinder ---
+выбор-вуза-рф/
+выбор-вуза-рф.zip
+анализатор_списков_поступающих_спбпу/
+анализатор_списков_поступающих_спбпу.zip
+
+# --- Архивы и документы ---
+*.zip
+*.pdf
+
+# --- IDE / OS ---
 .idea/
 .vscode/
-*.log
+.DS_Store
 Thumbs.db
-.zip
-.pdf
+*.log
