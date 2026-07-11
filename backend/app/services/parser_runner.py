@@ -11,12 +11,17 @@ import logging
 
 from app.core.config_loader import load_config
 from app.parser.base import BaseParser
+from app.parser.guap import GuapParser
+from app.parser.itmo import ItmoParser
+from app.parser.kpfu import KpfuParser
 from app.parser.leti import LetiParser
 from app.parser.mpei import MpeiParser
 from app.parser.samara import SamaraParser
 from app.parser.samgtu import SamgtuParser
 from app.parser.spbgu import SpbguParser
+from app.parser.spbau import SpbauParser
 from app.parser.spbstu import SpbstuParser
+from app.parser.spmi import SpmiParser
 from app.parser.sut import SutParser
 from app.parser.tltsu import TltsuParser
 from app.services.storage import save_parse_result
@@ -34,6 +39,11 @@ PARSER_REGISTRY: dict[str, type[BaseParser]] = {
     "TLTSU": TltsuParser,
     "LETI": LetiParser,
     "MPEI": MpeiParser,
+    "ITMO": ItmoParser,
+    "SPBAU": SpbauParser,
+    "KPFU": KpfuParser,
+    "GUAP": GuapParser,
+    "SPMI": SpmiParser,
 }
 
 # Флаг «парсинг идёт». Приложение однопоточное (asyncio), поэтому простой

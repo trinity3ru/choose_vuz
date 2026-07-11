@@ -20,6 +20,19 @@ from app.schemas.parser_schema import MajorResult, ParseResult
 
 logger = logging.getLogger(__name__)
 
+# Ограничения длины строковых полей в таблице applicants (см. models/applicant.py).
+_MAX_VARCHAR = 200
+
+
+def _trim_varchar(value: str | None, max_len: int = _MAX_VARCHAR) -> str | None:
+    """Обрезать строку под лимит колонки БД; пустое -> None."""
+    if not value:
+        return None
+    text = value.strip()
+    if not text:
+        return None
+    return text[:max_len] if len(text) > max_len else text
+
 
 async def save_parse_result(
     university: UniversityConfig, result: ParseResult
@@ -121,10 +134,10 @@ async def _save_major(
             exam_score=row.exam_score,
             achievement_score=row.achievement_score,
             target_achievement_score=row.target_achievement_score,
-            preferential_right=row.preferential_right,
+            preferential_right=_trim_varchar(row.preferential_right),
             priority=row.priority,
             has_agreement=row.has_agreement,
-            review_status=row.review_status,
+            review_status=_trim_varchar(row.review_status),
         )
         for row in major_result.applicants
     ]

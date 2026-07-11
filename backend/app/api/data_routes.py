@@ -1,14 +1,15 @@
 """
 API-эндпоинты выдачи данных для фронтенда.
 
-- GET /api/v1/data/universities — вузы и направления из последнего успешного
+- GET /api/v1/data/universities — вузы и направления из последнего пригодного
   снимка (то, по чему реально есть данные для анализа).
 - GET /api/v1/data/applicants   — заявления абитуриентов одного направления
-  из последнего успешного снимка, плюс сводка по направлению.
+  из последнего пригодного снимка, плюс сводка по направлению.
 
-«Успешный снимок» — последний ParseSnapshot со статусом "success", в котором
-есть строки по нужному направлению. Так фронтенд всегда показывает полные,
-не оборванные ошибкой данные.
+«Пригодный снимок» — последний ParseSnapshot со статусом success или partial,
+в котором есть строки по нужному направлению. Статус partial допускаем,
+если часть направлений вуза не спарсилась (напр. нет бюджетного списка),
+но по остальным данные полные.
 """
 
 import logging
@@ -31,6 +32,10 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/data", tags=["data"])
 
+# Снимки, из которых фронтенд может показывать данные.
+# partial — часть направлений вуза упала, но сохранённые строки валидны.
+_USABLE_SNAPSHOT_STATUSES = ("success", "partial")
+
 
 @router.get("/universities")
 async def list_universities(
@@ -40,15 +45,15 @@ async def list_universities(
     Вернуть вузы и их направления, по которым есть спарсенные данные.
 
     Возвращаются только направления, у которых есть заявления хотя бы в одном
-    успешном снимке — чтобы в фильтрах фронтенда не было пустых пунктов.
+    пригодном снимке — чтобы в фильтрах фронтенда не было пустых пунктов.
     """
-    # Направления, по которым есть данные в успешных снимках.
+    # Направления, по которым есть данные в success/partial снимках.
     stmt = (
         select(University.code, University.name, Major.code, Major.name)
         .join(Major, Major.university_id == University.id)
         .join(Applicant, Applicant.major_id == Major.id)
         .join(ParseSnapshot, ParseSnapshot.id == Applicant.snapshot_id)
-        .where(ParseSnapshot.status == "success")
+        .where(ParseSnapshot.status.in_(_USABLE_SNAPSHOT_STATUSES))
         .distinct()
         .order_by(University.name, Major.code)
     )
@@ -72,20 +77,20 @@ async def get_applicants(
     session: AsyncSession = Depends(get_session),
 ) -> ApplicantsResponse:
     """
-    Вернуть заявления одного направления из последнего успешного снимка.
+    Вернуть заявления одного направления из последнего пригодного снимка.
 
-    Данные берутся из самого свежего снимка со статусом "success", в котором
+    Данные берутся из самого свежего снимка success/partial, в котором
     есть строки по этому направлению.
     """
     major = await _resolve_major(session, university_code, major_code)
     if major is None:
         raise HTTPException(status_code=404, detail="Направление не найдено")
 
-    snapshot = await _latest_success_snapshot_for_major(session, major.id)
+    snapshot = await _latest_usable_snapshot_for_major(session, major.id)
     if snapshot is None:
         raise HTTPException(
             status_code=404,
-            detail="Нет успешного снимка с данными по этому направлению",
+            detail="Нет снимка с данными по этому направлению",
         )
 
     applicants_stmt = (
@@ -146,20 +151,20 @@ async def _resolve_major(
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
-async def _latest_success_snapshot_for_major(
+async def _latest_usable_snapshot_for_major(
     session: AsyncSession, major_id
 ) -> ParseSnapshot | None:
     """
-    Найти последний успешный снимок, где есть заявления по направлению.
+    Найти последний пригодный снимок, где есть заявления по направлению.
 
     Джойн с applicants гарантирует, что снимок реально содержит данные по
-    этому направлению (а не просто существует со статусом success).
+    этому направлению (а не просто существует со статусом success/partial).
     """
     stmt = (
         select(ParseSnapshot)
         .join(Applicant, Applicant.snapshot_id == ParseSnapshot.id)
         .where(
-            ParseSnapshot.status == "success",
+            ParseSnapshot.status.in_(_USABLE_SNAPSHOT_STATUSES),
             Applicant.major_id == major_id,
         )
         .order_by(ParseSnapshot.created_at.desc())

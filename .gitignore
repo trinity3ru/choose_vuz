@@ -10,7 +10,8 @@ coverage/
 # Python / backend
 backend/.env
 backend/.venv/
-backend/__pycache__/
+**/__pycache__/
+*.pyc
 backend/logs/
 backend/*.html
 backend/*.js
@@ -26,3 +27,5 @@ frontend/.env.local
 .vscode/
 *.log
 Thumbs.db
+.zip
+.pdf
