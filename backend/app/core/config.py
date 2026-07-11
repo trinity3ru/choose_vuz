@@ -37,6 +37,29 @@ class Settings(BaseSettings):
     # CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
+    # --- Прод-режим: очередь, worker, мониторинг (см. DEPLOY_PLAN.md) ---
+
+    # Запускать APScheduler внутри API (только локальная разработка).
+    enable_scheduler: bool = False
+
+    # Пауза между опросами очереди воркером (consume-queue), сек.
+    queue_poll_seconds: int = 15
+
+    # Токен ручного запуска парсера через POST /api/v1/parser/run/{code}.
+    parser_trigger_token: str = ""
+
+    # Данные вуза считаются устаревшими, если нет успешного запуска дольше N часов.
+    parser_stale_hours: int = 24
+
+    # running-задача старше N минут считается зависшей (worker interrupted).
+    parser_stuck_minutes: int = 180
+
+    # Алерт при падении records_saved на N% и больше от последнего успешного запуска.
+    parser_records_drop_percent: int = 50
+
+    # Хранить снимки парсинга N дней (cleanup-snapshots).
+    snapshot_retention_days: int = 60
+
     @property
     def cors_origins_list(self) -> list[str]:
         """CORS-источники как список (разбор строки из .env)."""

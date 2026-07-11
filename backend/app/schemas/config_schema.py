@@ -49,12 +49,19 @@ class MajorConfig(BaseModel):
     )
 
 
+# Тип парсера вуза (ТЗ §8.2): http — обычные запросы (httpx, без браузера),
+# playwright — нужна реальная браузерная сессия (Chromium в worker-образе).
+ParserType = Literal["http", "playwright"]
+
+
 class UniversityConfig(BaseModel):
     """Один вуз с его направлениями."""
 
     code: str = Field(..., min_length=1, description="Короткий код вуза, напр. SPBSTU")
     name: str = Field(..., min_length=1)
     url: HttpUrl
+    # Обязательное поле: явный контроль, какие вузы требуют браузер.
+    parser_type: ParserType
     enabled: bool = True
     majors: list[MajorConfig] = Field(..., min_length=1)
 

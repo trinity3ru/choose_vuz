@@ -50,6 +50,28 @@ def test_http_parsers_do_not_import_playwright():
     assert proc.returncode == 0, proc.stderr
 
 
+def test_api_and_cli_do_not_import_playwright():
+    """
+    api-образ собирается без Playwright: import app.main, app.cli и очереди
+    не должен его загружать (ленивый импорт парсеров в CLI — раунд D плана).
+    """
+    code = (
+        "import os, sys; "
+        "os.environ.setdefault('DATABASE_URL', 'postgresql+asyncpg://t:t@localhost/t'); "
+        "import app.main; import app.cli; import app.services.queue; "
+        "import app.scheduler.jobs; import app.api.parser_routes; "
+        "bad = [m for m in sys.modules if m.startswith(('playwright', 'app.parser', 'bs4', 'openpyxl'))]; "
+        "assert not bad, f'api-контур тянет парсеры: {bad}'"
+    )
+    proc = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=BACKEND_DIR,
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, proc.stderr
+
+
 def test_playwright_parsers_still_importable():
     """Playwright-парсеры (СПбПУ, СПбГУТ) по-прежнему импортируются."""
     code = (

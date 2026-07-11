@@ -28,10 +28,15 @@ async def lifespan(app: FastAPI):
     """Управление жизненным циклом: старт и остановка фоновых сервисов."""
     # Ранняя проверка конфига — падаем сразу с понятной ошибкой, если он битый.
     load_config()
-    start_scheduler()
+    # В проде расписание живёт в systemd-таймерах (см. DEPLOY_PLAN.md);
+    # APScheduler внутри API — только для локальной разработки.
+    if settings.enable_scheduler:
+        start_scheduler()
+        logger.info("APScheduler включён (ENABLE_SCHEDULER=true)")
     logger.info("Приложение запущено")
     yield
-    stop_scheduler()
+    if settings.enable_scheduler:
+        stop_scheduler()
     logger.info("Приложение остановлено")
 
 

@@ -10,6 +10,7 @@ from app.models.major import Major
 from app.models.snapshot import ParseSnapshot
 from app.models.applicant import Applicant
 from app.models.major_stats import MajorStats
+from app.models.parser_run import ParserRun
 
 __all__ = [
     "University",
@@ -17,4 +18,5 @@ __all__ = [
     "ParseSnapshot",
     "Applicant",
     "MajorStats",
+    "ParserRun",
 ]

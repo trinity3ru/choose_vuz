@@ -1,27 +1,5 @@
-# Веб-фреймворк и ASGI-сервер
-fastapi==0.115.6
-uvicorn[standard]==0.34.0
+# Полный набор для локальной разработки (api + worker в одном окружении).
+# Прод-образы собираются из requirements-api.txt / requirements-worker.txt.
 
-# Работа с PostgreSQL (асинхронно) + миграции
-sqlalchemy[asyncio]==2.0.36
-asyncpg==0.30.0
-alembic==1.14.0
-
-# HTTP-парсеры (11 из 13 вузов): обычные запросы без браузера
-httpx==0.28.1
-
-# Playwright-парсеры (СПбПУ, СПбГУТ): нужна реальная браузерная сессия
-playwright==1.49.1
-
-# Периодический запуск задач
-apscheduler==3.11.0
-
-# Валидация конфига и данных, чтение настроек из .env
-pydantic==2.10.4
-pydantic-settings==2.7.0
-
-# Разбор HTML-таблиц (нужен для парсера СПбГУТ, который отдаёт HTML)
-beautifulsoup4==4.12.3
-
-# Разбор xlsx-списков (Академический университет им. Алферова, spbau.ru)
-openpyxl==3.1.5
+-r requirements-api.txt
+-r requirements-worker.txt

@@ -95,6 +95,49 @@ async def run_parser(major_code: str | None = None) -> list[dict]:
         end()
 
 
+async def run_university(code: str, major_code: str | None = None) -> dict:
+    """
+    Спарсить один вуз (для CLI/worker) и сохранить снимок в БД.
+
+    :param code: канонический код вуза из config.json (SPBSTU, ITMO, ...).
+    :param major_code: если указан — только одно направление.
+    :return: сводка запуска (status, счётчики, ошибки) для parser_runs.
+    :raises RuntimeError: если вуз не найден/выключен или нет парсера.
+    """
+    config = load_config()
+    university = next((u for u in config.universities if u.code == code), None)
+    if university is None:
+        raise RuntimeError(f"вуз {code} не найден в config.json")
+    if not university.enabled:
+        raise RuntimeError(f"вуз {code} выключен в config.json (enabled=false)")
+
+    parser_cls = PARSER_REGISTRY.get(university.code)
+    if parser_cls is None:
+        raise RuntimeError(f"нет парсера для вуза {code}")
+
+    uni_config = university
+    if major_code is not None:
+        filtered = [m for m in university.majors if m.code == major_code]
+        if not filtered:
+            raise RuntimeError(f"направление {major_code} не найдено у {code}")
+        uni_config = university.model_copy(update={"majors": filtered})
+
+    parser = parser_cls(uni_config, config.parser_settings.request_delay_seconds)
+    result = await parser.parse()
+    snapshot = await save_parse_result(uni_config, result)
+
+    records = sum(len(m.applicants) for m in result.majors)
+    return {
+        "university": university.code,
+        "snapshot_id": str(snapshot.id),
+        "status": snapshot.status,
+        "majors_parsed": len(result.majors),
+        "records_found": records,
+        "records_saved": records,
+        "errors": result.errors,
+    }
+
+
 async def execute(major_code: str | None = None) -> list[dict]:
     """
     Выполнить парсинг всех включённых вузов из конфига (без захвата флага).

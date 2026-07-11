@@ -1,0 +1,11 @@
+# Worker-контейнер: парсеры, Playwright + Chromium, разбор HTML/xlsx (ТЗ §8).
+-r requirements-base.txt
+
+# Playwright-парсеры (СПбПУ, СПбГУТ): нужна реальная браузерная сессия.
+playwright==1.49.1
+
+# Разбор HTML-таблиц (большинство вузов).
+beautifulsoup4==4.12.3
+
+# Разбор xlsx-списков (Алферовский университет, spbau.ru).
+openpyxl==3.1.5

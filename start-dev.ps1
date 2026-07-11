@@ -159,6 +159,25 @@ Write-Host 'Swagger: http://127.0.0.1:$Port/docs' -ForegroundColor Green
     Write-Ok "Backend window opened"
 }
 
+function Start-WorkerWindow {
+    Write-Step "Starting worker (consume-queue) in a new window"
+
+    $workerCommand = @"
+Set-Location -LiteralPath '$BackendDir'
+Write-Host 'Worker: python -m app.cli consume-queue' -ForegroundColor Green
+& '$PythonExe' -m app.cli consume-queue
+"@
+
+    Start-Process powershell -ArgumentList @(
+        "-NoExit",
+        "-NoProfile",
+        "-Command",
+        $workerCommand
+    ) | Out-Null
+
+    Write-Ok "Worker window opened"
+}
+
 function Wait-BackendReady([int]$Port, [int]$TimeoutSeconds) {
     Write-Step "Waiting for backend /health (up to $TimeoutSeconds sec)"
 
@@ -207,34 +226,17 @@ function Get-ParserStatus([int]$Port) {
 }
 
 function Start-AllParsers([int]$Port, [string]$MajorCode) {
-    Write-Step "Starting all parsers (POST /api/v1/parser/start)"
+    Write-Step "Queueing all parsers (POST /api/v1/parser/start)"
+
+    if ($MajorCode) {
+        Write-Warn "-MajorCode is not supported by the queue API anymore; queueing all universities"
+    }
 
     $uri = "http://127.0.0.1:$Port/api/v1/parser/start"
-    try {
-        if ($MajorCode) {
-            $body = @{ major_code = $MajorCode } | ConvertTo-Json -Compress
-            $response = Invoke-RestMethod -Uri $uri -Method Post -Body $body -ContentType "application/json"
-            Write-Ok "Parser started for major $MajorCode"
-        }
-        else {
-            $response = Invoke-RestMethod -Uri $uri -Method Post
-            Write-Ok "Parser started for all universities"
-        }
-        if ($response.major_code) {
-            Write-Host "  major_code: $($response.major_code)"
-        }
-    }
-    catch {
-        $httpStatus = $null
-        if ($_.Exception.Response) {
-            $httpStatus = [int]$_.Exception.Response.StatusCode
-        }
-        if ($httpStatus -eq 409) {
-            Write-Warn "Parser is already running - will wait for completion"
-            return
-        }
-        throw
-    }
+    $response = Invoke-RestMethod -Uri $uri -Method Post
+    $queuedCount = @($response.queued).Count
+    $skippedCount = @($response.skipped).Count
+    Write-Ok "Queued: $queuedCount, skipped (already active): $skippedCount"
 }
 
 function Wait-ParserComplete([int]$Port, [int]$TimeoutMinutes) {
@@ -287,6 +289,9 @@ try {
         Start-BackendWindow -Port $BackendPort
         Wait-BackendReady -Port $BackendPort -TimeoutSeconds $BackendWaitSeconds
     }
+
+    # Worker разбирает очередь parser_runs (архитектура как в проде).
+    Start-WorkerWindow
 
     if (-not $SkipParser) {
         Start-AllParsers -Port $BackendPort -MajorCode $MajorCode

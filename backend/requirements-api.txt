@@ -1,0 +1,9 @@
+# API-контейнер: лёгкий, БЕЗ Playwright/Chromium (ТЗ §7).
+-r requirements-base.txt
+
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+# Планировщик присутствует в образе, но включается только ENABLE_SCHEDULER=true
+# (локальная разработка). В проде расписание — systemd-таймеры на VPS.
+apscheduler==3.11.0

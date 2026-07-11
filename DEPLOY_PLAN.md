@@ -106,19 +106,26 @@
 
 ## Этап 2. Backend: очередь, CLI, разрыв импортов, зависимости
 
-- [ ] 2.1. `app/services/queue.py` — enqueue/claim/finalize/recover по `parser_runs` (только БД):
-  дедуп; атомарный claim (`FOR UPDATE SKIP LOCKED`); пометка «зависших».
-- [ ] 2.2. `app/cli.py`: `parse-all`, `parse-university <code>`, `enqueue <code>`, `consume-queue`,
-  `recover-stuck-runs`, `check-parser-health`, `cleanup-snapshots`. Коды выхода `0/1/2`.
-  Регистронезависимый код вуза. Импорт `parser_runner`/`app.parser.*` — **ленивый** (внутри
-  `consume-queue`/`parse-*`), чтобы DB-only команды работали в api-образе без Playwright.
-- [ ] 2.3. Разрыв импортов: `app.main`/`app.api.*` не импортируют `parser_runner`/`app.parser.*`.
-- [ ] 2.4. Зависимости: `requirements-base.txt` (sqlalchemy/asyncpg/alembic/pydantic/httpx),
-  `requirements-api.txt` (`-r base` + fastapi/uvicorn), `requirements-worker.txt`
-  (`-r base` + playwright/beautifulsoup4/openpyxl), `requirements-dev.txt` (+ pytest/pytest-asyncio).
-- [ ] 2.5. APScheduler в проде off: старт только при `ENABLE_SCHEDULER=true` (default false).
-- [ ] 2.6. `parser_type: Literal["http","playwright"]` — обязательное поле схемы; проставить в
+- [x] 2.1. `app/services/queue.py` — enqueue/claim/finalize/recover по `parser_runs` (только БД):
+  дедуп; атомарный claim (`FOR UPDATE SKIP LOCKED`); пометка «зависших»; advisory-lock хелперы.
+- [x] 2.2. `app/cli.py`: `parse-all`, `parse-university <code>`, `enqueue <code>`, `consume-queue`
+  (`--once`; recover при старте; graceful SIGTERM), `recover-stuck-runs`, `check-parser-health`,
+  `cleanup-snapshots`. Коды выхода `0/1/2`. Регистронезависимый код. Ленивый импорт парсеров.
+- [x] 2.3. Разрыв импортов: `parser_routes` ставит задания через `queue` (`/parser/start` →
+  enqueue всех включённых или одного, дубликаты в skipped); `scheduler/jobs.py` тоже enqueue;
+  тест: `app.main`/`app.cli`/`queue`/`jobs`/`routes` не тянут playwright/bs4/openpyxl/app.parser.
+- [x] 2.4. Зависимости разделены: `requirements-base.txt`, `requirements-api.txt`
+  (+fastapi/uvicorn/apscheduler), `requirements-worker.txt` (+playwright/bs4/openpyxl),
+  `requirements.txt` = api+worker (локальная разработка), `requirements-dev.txt` (+pytest).
+- [x] 2.5. APScheduler в проде off: старт только при `ENABLE_SCHEDULER=true` (default false).
+- [x] 2.6. `parser_type: Literal["http","playwright"]` — обязательное поле схемы; проставлен в
   `config.json` (SPBSTU/SUT → playwright, остальные 11 → http).
+- [x] 2.7. (из этапа 3, досрочно) Модель `app/models/parser_run.py` + миграция `b7c2d9e41a05`
+  (`parser_runs` + индексы). Статусы: queued/running/success/partial/failed/skipped.
+- [x] 2.8. `start-dev.ps1`: отдельное окно worker (`consume-queue`) — dev повторяет прод.
+- [x] 2.9. Тесты `tests/test_queue.py` против тестовой PostgreSQL (очередь/дедуп/FIFO/finalize/
+  recover/advisory-lock/CLI) — суммарно 30 passed. Живой smoke на dev-БД: `enqueue itmo` →
+  `consume-queue --once` → реальный парсинг ИТМО (4 направления, success) → health: ITMO fresh.
 
 ## Этап 3. БД: `parser_runs`, ссылки снимка, retention
 

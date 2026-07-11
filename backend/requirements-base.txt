@@ -1,0 +1,11 @@
+# Общие зависимости api и worker: БД, миграции, валидация, HTTP-клиент.
+
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+
+pydantic==2.10.4
+pydantic-settings==2.7.0
+
+# HTTP-парсеры (11 из 13 вузов) и служебные запросы.
+httpx==0.28.1

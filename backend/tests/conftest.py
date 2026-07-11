@@ -7,11 +7,14 @@
 
 import os
 
-# Настройки приложения требуют DATABASE_URL — в тестах БД не нужна,
-# но переменная должна существовать до импорта app.core.config.
-os.environ.setdefault(
-    "DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5432/test"
+# Тесты используют отдельную БД (SKIP LOCKED и advisory-lock требуют PostgreSQL).
+# Переменная выставляется ДО импорта app.core.config; если базы нет,
+# DB-тесты будут пропущены (см. фикстуру db_engine в test_queue.py).
+TEST_DATABASE_URL = os.environ.get(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://postgres:postgres@localhost:5544/univer_parser_test",
 )
+os.environ.setdefault("DATABASE_URL", TEST_DATABASE_URL)
 
 from typing import Callable  # noqa: E402
 
@@ -41,9 +44,20 @@ def make_major(
     )
 
 
-def make_university(code: str, url: str, majors: list[MajorConfig]) -> UniversityConfig:
+def make_university(
+    code: str,
+    url: str,
+    majors: list[MajorConfig],
+    parser_type: str = "http",
+) -> UniversityConfig:
     """Вуз для тестов."""
-    return UniversityConfig(code=code, name=f"Тестовый вуз {code}", url=url, majors=majors)
+    return UniversityConfig(
+        code=code,
+        name=f"Тестовый вуз {code}",
+        url=url,
+        parser_type=parser_type,
+        majors=majors,
+    )
 
 
 def mock_client(parser: HttpParser, handler: Handler) -> None:
