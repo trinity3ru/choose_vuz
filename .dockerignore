@@ -1,0 +1,42 @@
+# Контекст сборки — корень репозитория; исключаем всё лишнее.
+
+.git
+.gitignore
+
+# Секреты
+.env
+backend/.env
+
+# Python
+**/.venv
+**/__pycache__
+*.pyc
+backend/logs
+
+# Node
+**/node_modules
+frontend/dist
+frontend/tsconfig.tsbuildinfo
+
+# Локальные данные деплоя
+parser-logs
+parser-screenshots
+backups
+postgres-data
+locks
+
+# Локальные проекты вне деплоя и архивы
+выбор-вуза-рф
+анализатор_списков_поступающих_спбпу
+*.zip
+*.pdf
+
+# Отладочные дампы
+backend/*.html
+backend/*.js
+backend/scripts/*.html
+backend/*_sample.json
+backend/itmo_api.json
+
+# Документация процесса (не нужна в образах)
+DEPLOY_PLAN.md

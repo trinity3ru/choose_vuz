@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     # Запускать браузер без графического окна (True на сервере).
     headless: bool = True
 
+    # Отключить sandbox Chromium (нужно при запуске в Docker-контейнере
+    # под root: worker-образ). Локально оставлять False.
+    browser_no_sandbox: bool = False
+
     # Разрешённые источники для CORS (фронтенд). Через запятую в .env, напр.:
     # CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"

@@ -1,0 +1,141 @@
+# Docker Compose проекта VuzFinder для VPS (см. DEPLOY.md, ТЗ §3–5).
+#
+# Принципы (ТЗ §4.19 «не ломать соседние проекты»):
+# - имя проекта university: контейнеры/сети/тома не пересекаются с соседями;
+# - наружу не публикуется НИ ОДИН порт: HTTP-трафик ходит через существующий
+#   Nginx Proxy Manager по общей proxy-сети (vuzfinder.ru -> frontend:3000,
+#   api.vuzfinder.ru -> api:8000);
+# - PostgreSQL и worker живут только во внутренней сети university_internal;
+# - лимиты ресурсов и ротация логов заданы каждому сервису (ТЗ §18, §4.12).
+#
+# Имя proxy-сети NPM задаётся в .env: PROXY_NETWORK_NAME (см. docker network ls).
+
+name: university
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: university-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-university}
+      POSTGRES_USER: ${POSTGRES_USER:-university}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD в .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - university_internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-university} -d ${POSTGRES_DB:-university}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    mem_limit: 1500m
+    cpus: 1.0
+    logging: *default-logging
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    container_name: university-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://vuzfinder.ru,https://www.vuzfinder.ru}
+      PARSER_TRIGGER_TOKEN: ${PARSER_TRIGGER_TOKEN:-}
+      PARSER_STALE_HOURS: ${PARSER_STALE_HOURS:-24}
+      PARSER_STUCK_MINUTES: ${PARSER_STUCK_MINUTES:-180}
+      PARSER_RECORDS_DROP_PERCENT: ${PARSER_RECORDS_DROP_PERCENT:-50}
+      SNAPSHOT_RETENTION_DAYS: ${SNAPSHOT_RETENTION_DAYS:-60}
+      TELEGRAM_ALERTS_ENABLED: ${TELEGRAM_ALERTS_ENABLED:-false}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      # Прод: расписание — systemd-таймеры на VPS, не APScheduler.
+      ENABLE_SCHEDULER: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - proxy
+      - university_internal
+    mem_limit: 700m
+    cpus: 0.75
+    logging: *default-logging
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    container_name: university-worker
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      QUEUE_POLL_SECONDS: ${QUEUE_POLL_SECONDS:-15}
+      PARSER_STUCK_MINUTES: ${PARSER_STUCK_MINUTES:-180}
+      PARSER_RECORDS_DROP_PERCENT: ${PARSER_RECORDS_DROP_PERCENT:-50}
+      TELEGRAM_ALERTS_ENABLED: ${TELEGRAM_ALERTS_ENABLED:-false}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      HEADLESS: "true"
+      # Chromium в контейнере работает под root без sandbox.
+      BROWSER_NO_SANDBOX: "true"
+      SCREENSHOTS_DIR: /app/screenshots
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      # internal — до PostgreSQL; egress — доступ в интернет к сайтам вузов.
+      # Входящих портов у worker нет: из интернета он недоступен (ТЗ §5.1).
+      - university_internal
+      - university_egress
+    volumes:
+      - ./parser-logs:/app/logs
+      - ./parser-screenshots:/app/screenshots
+      # Общий lock-файл на хосте: второй worker не начнёт парсить (flock).
+      - ./locks:/var/lock/university
+    shm_size: 1gb
+    mem_limit: 3g
+    cpus: 2.5
+    logging: *default-logging
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-https://api.vuzfinder.ru}
+    container_name: university-frontend
+    restart: unless-stopped
+    networks:
+      - proxy
+      - university_internal
+    mem_limit: 700m
+    cpus: 0.75
+    logging: *default-logging
+
+networks:
+  # Существующая сеть Nginx Proxy Manager (внешняя). Имя уточнить на VPS:
+  #   docker network ls   (npm_default / nginx-proxy-manager_default / ...)
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK_NAME:-npm_default}
+
+  # Внутренняя сеть проекта: api/worker -> postgres. Наружу не выходит
+  # (internal: true), поэтому PostgreSQL полностью изолирован.
+  university_internal:
+    internal: true
+
+  # Egress-сеть worker'а: исходящий доступ к сайтам вузов для парсинга.
+  # Портов наружу нет — входящие соединения к worker невозможны.
+  university_egress: {}
+
+volumes:
+  postgres-data:

@@ -181,19 +181,32 @@
 
 ## Этап 6. Docker: три образа + compose
 
-- [ ] 6.1. `docker/api.Dockerfile` — `python:3.11-slim`, `requirements-api.txt`, без Chromium; uvicorn:8000.
-- [ ] 6.2. `docker/worker.Dockerfile` — база `mcr.microsoft.com/playwright/python:v1.49.1`,
-  `requirements-worker.txt`; явно установить `flock` (`util-linux`); команда:
+- [x] 6.1. `docker/api.Dockerfile` — `python:3.11-slim`, `requirements-api.txt`, без Chromium,
+  non-root `apiuser`; uvicorn:8000. Проверено: playwright в образе отсутствует, alembic на месте.
+- [x] 6.2. `docker/worker.Dockerfile` — база `mcr.microsoft.com/playwright/python:v1.49.1-noble`,
+  `requirements-worker.txt`; `util-linux` (flock) установлен явно; команда:
   `flock -n /var/lock/university/parser.lock python -m app.cli consume-queue`
-  (lock-файл на bind-mounted `./locks:/var/lock/university` — общий на хосте).
-- [ ] 6.3. `docker/frontend.Dockerfile` (node build → nginx:alpine) + `docker/frontend/nginx.conf`
-  (`listen 3000`, SPA-fallback); `VITE_API_URL` — build-arg.
-- [ ] 6.4. `compose.yaml` (`name: university`): `container_name` `university-{frontend,api,worker,postgres}`;
-  сети `proxy` (external) + `university_internal` (internal); `frontend/api` → обе, `worker/postgres`
-  → только internal; портов наружу нет. `healthcheck` для postgres (`pg_isready`) и
-  `depends_on: { postgres: { condition: service_healthy } }` для `api` и `worker`.
-- [ ] 6.5. Лимиты (ТЗ §18) и ротация логов (`json-file` 20m×5); volumes `postgres-data`,
-  `./parser-logs`, `./parser-screenshots`, `./backups`, `./locks:/var/lock/university`.
+  (lock на bind-mounted `./locks:/var/lock/university`). Для Chromium под root добавлена
+  настройка `BROWSER_NO_SANDBOX` (spbstu/sut передают `chromium_sandbox=False`);
+  запуск браузера в контейнере проверен.
+- [x] 6.3. `docker/frontend.Dockerfile` (node:22 build → nginx:alpine) + `docker/frontend/nginx.conf`
+  (`listen 3000`, SPA-fallback, gzip, кэш assets); `VITE_API_URL` — build-arg. Проверено:
+  GET / и SPA-роут → 200, prod-URL вшит в бандл.
+- [x] 6.4. `compose.yaml` (`name: university`): `container_name` `university-*`; сети `proxy`
+  (external, имя из `PROXY_NETWORK_NAME`) + `university_internal` (internal). Отклонение от
+  эскиза ТЗ: worker дополнительно в `university_egress` (обычный bridge) — ему нужен ИСХОДЯЩИЙ
+  доступ к сайтам вузов, а `internal: true` режет весь трафик; входящих портов у worker нет,
+  из интернета он недоступен. Postgres — только internal. Портов наружу нет.
+  `healthcheck` postgres (`pg_isready`) + `depends_on: service_healthy` для api/worker.
+- [x] 6.5. Лимиты (ТЗ §18: 3g/2.5+shm1g, 1.5g/1.0, 700m/0.75×2) и ротация логов
+  (`json-file` 20m×5 через YAML-якорь); volumes `postgres-data`, `./parser-logs`,
+  `./parser-screenshots`, `./locks`. Добавлен `.dockerignore` (контекст — корень репо).
+- [x] 6.6. Живой прогон полного стека локально (сеть `npm_default` создана как на VPS):
+  `compose up -d --build` → postgres healthy → `compose run --rm api alembic upgrade head`
+  (3 миграции) → POST `/parser/run/itmo` с токеном (202) → worker-контейнер спарсил ИТМО
+  (4143 записи, success) → health: ITMO FRESH. Доступность по именам контейнеров из
+  proxy-сети (как будет ходить NPM): `university-frontend:3000` → 200,
+  `university-api:8000/health` → 200. Стек снят `compose down -v` (только `university_*`).
 
 ## Этап 7. Расписание (systemd) + flock
 

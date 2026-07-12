@@ -47,7 +47,11 @@ class SutParser(BaseParser):
         url = str(self.university.url)
 
         async with async_playwright() as pw:
-            browser = await pw.chromium.launch(headless=settings.headless)
+            browser = await pw.chromium.launch(
+                headless=settings.headless,
+                # В Docker-контейнере (root) Chromium работает без sandbox.
+                chromium_sandbox=not settings.browser_no_sandbox,
+            )
             page = await browser.new_page()
             try:
                 await page.goto(url, wait_until="domcontentloaded",
