@@ -1,0 +1,11 @@
+# VuzFinder: ежедневный backup PostgreSQL (ТЗ §17).
+
+[Unit]
+Description=VuzFinder: daily PostgreSQL backup
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/university
+ExecStart=/usr/bin/bash /opt/university/scripts/backup-db.sh

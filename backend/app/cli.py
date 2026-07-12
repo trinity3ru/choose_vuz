@@ -27,7 +27,7 @@ import uuid
 from datetime import datetime, timezone
 
 from app.core.config import settings
-from app.services import changes, queue
+from app.services import changes, notifications, queue
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +76,7 @@ async def _execute_run(run) -> str:
     except Exception as exc:  # noqa: BLE001
         logger.exception("Запуск %s (%s) упал", run.id, run.university_code)
         await queue.finalize(run.id, "failed", error_message=str(exc)[:2000])
+        await notifications.notify_run_finished(run.id)
         return "failed"
 
     records_changed = await _records_changed_safe(summary)
@@ -96,6 +97,8 @@ async def _execute_run(run) -> str:
         summary["records_saved"],
         records_changed,
     )
+    # Алерты по событиям ТЗ §13 (failed/partial/0 записей/резкое падение).
+    await notifications.notify_run_finished(run.id)
     return summary["status"]
 
 
@@ -141,6 +144,7 @@ async def cmd_consume_queue(args: argparse.Namespace) -> int:
     recovered = await queue.recover_stuck(settings.parser_stuck_minutes)
     for run in recovered:
         logger.warning("Восстановлено зависшее задание %s (%s)", run.id, run.university_code)
+    await notifications.notify_worker_interrupted(recovered)
 
     logger.info("consume-queue: старт (poll=%d сек)", settings.queue_poll_seconds)
     while not stopping:
@@ -209,6 +213,7 @@ async def cmd_recover_stuck(args: argparse.Namespace) -> int:
     recovered = await queue.recover_stuck(settings.parser_stuck_minutes)
     for run in recovered:
         print(f"recovered: {run.university_code} (run_id={run.id})")
+    await notifications.notify_worker_interrupted(recovered)
     print(f"total: {len(recovered)}")
     return EXIT_OK
 
@@ -228,6 +233,9 @@ async def cmd_check_parser_health(args: argparse.Namespace) -> int:
         report = await build_health_report(s)
 
     print(json.dumps(report, ensure_ascii=False, indent=2))
+
+    stale = [u for u in report["universities"] if u["is_stale"]]
+    await notifications.notify_stale(stale)
     return EXIT_PARTIAL if report["status"] == "stale" else EXIT_OK
 
 

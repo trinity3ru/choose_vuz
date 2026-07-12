@@ -227,13 +227,20 @@
 
 ## Этап 8. Telegram-алерты + бэкапы
 
-- [ ] 8.1. `app/services/notifications.py` — события `failed/partial/stale/records=0/
-  worker interrupted` и «резкое падение записей»: `records_saved` упал на ≥
-  `PARSER_RECORDS_DROP_PERCENT` (%, default 50) относительно последнего успешного запуска вуза
-  (для первого запуска сравнения нет). env `TELEGRAM_*`; вызов из CLI, `recover-stuck-runs`,
-  `check-parser-health`.
-- [ ] 8.2. `scripts/backup-db.sh` (+`find -mtime`) и `scripts/restore-db.sh`;
-  `university-backup.service`/`.timer` (ежедневно); `BACKUP_RETENTION_DAYS=14`.
+- [x] 8.1. `app/services/notifications.py` (DB-only, httpx): события `failed`, `partial`,
+  `records=0`, «резкое падение» (≥ `PARSER_RECORDS_DROP_PERCENT` от последнего успешного
+  запуска; без базы сравнения — тихо), `worker interrupted`, сводный stale-алерт.
+  Настройки `TELEGRAM_*` добавлены в Settings. Вызовы: `_execute_run` (после finalize),
+  `recover-stuck-runs` + старт consumer, `check-parser-health`. Все отправки best-effort —
+  ошибки алертов никогда не роняют парсинг. Тесты: 10 сценариев (56 passed суммарно).
+- [x] 8.2. `scripts/backup-db.sh`: `pg_dump` внутри postgres-контейнера (креды из окружения
+  контейнера, .env не парсится) → `backups/university-<штамп>.sql.gz`; защита от пустого
+  дампа; ретеншн `find -mtime +N -delete` (`BACKUP_RETENTION_DAYS`, default 14).
+  `scripts/restore-db.sh <файл> [--yes]`: пересоздание схемы public + восстановление
+  (.sql и .sql.gz), подтверждение обязательно. `university-backup.{service,timer}` —
+  ежедневно в 07:30 (после ночных парсеров); включён в `install-timers.sh` (install/uninstall).
+  Живой roundtrip на compose-postgres: seed → backup (gz) → DROP TABLE → restore →
+  данные вернулись («42 | до бэкапа»).
 
 ## Этап 9. Тесты и smoke-check
 

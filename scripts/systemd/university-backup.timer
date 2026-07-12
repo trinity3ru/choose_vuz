@@ -1,0 +1,12 @@
+# Ежедневный backup в 07:30 — после завершения ночных парсеров (00:30–06:30),
+# чтобы в копию попали самые свежие данные.
+
+[Unit]
+Description=VuzFinder: daily PostgreSQL backup at 07:30
+
+[Timer]
+OnCalendar=*-*-* 07:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

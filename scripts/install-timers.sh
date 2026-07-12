@@ -57,10 +57,12 @@ if [[ "$UNINSTALL" == "1" ]]; then
         systemctl disable --now "university-parser@$code.timer" 2>/dev/null || true
         rm -f "$UNIT_DST/university-parser@$code.timer"
     done
-    systemctl disable --now university-recover.timer university-health-check.timer 2>/dev/null || true
+    systemctl disable --now university-recover.timer university-health-check.timer \
+        university-backup.timer 2>/dev/null || true
     rm -f "$UNIT_DST"/university-parser@.service \
           "$UNIT_DST"/university-recover.{service,timer} \
-          "$UNIT_DST"/university-health-check.{service,timer}
+          "$UNIT_DST"/university-health-check.{service,timer} \
+          "$UNIT_DST"/university-backup.{service,timer}
     systemctl daemon-reload
     echo "Готово."
     exit 0
@@ -102,8 +104,9 @@ systemctl daemon-reload
 for code in $codes; do
     systemctl enable --now "university-parser@$code.timer"
 done
-systemctl enable --now university-recover.timer university-health-check.timer
+systemctl enable --now university-recover.timer university-health-check.timer \
+    university-backup.timer
 
 echo ""
 systemctl list-timers 'university-*' --no-pager || true
-echo "Готово: $(echo $codes | wc -w) вузов + recover + health-check."
+echo "Готово: $(echo $codes | wc -w) вузов + recover + health-check + backup."

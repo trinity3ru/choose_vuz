@@ -64,6 +64,12 @@ class Settings(BaseSettings):
     # Хранить снимки парсинга N дней (cleanup-snapshots).
     snapshot_retention_days: int = 60
 
+    # --- Telegram-алерты о проблемах парсеров (ТЗ §13) ---
+
+    telegram_alerts_enabled: bool = False
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
+
     @property
     def cors_origins_list(self) -> list[str]:
         """CORS-источники как список (разбор строки из .env)."""
