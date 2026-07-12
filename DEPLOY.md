@@ -96,12 +96,20 @@ A   api   IP_СЕРВЕРА
 
 Проверка распространения DNS: `dig vuzfinder.ru`, `dig api.vuzfinder.ru`.
 
-В Nginx Proxy Manager создать два Proxy Host:
+В Nginx Proxy Manager создать два Proxy Host.
+
+**На текущем VPS NPM работает с `network_mode: host`** и не резолвит имена
+контейнеров — он проксирует на loopback-порты хоста. Наши порты публикует
+`compose.override.yaml` (только на 127.0.0.1 — из интернета недоступны):
 
 | Domain Names | Scheme | Forward Hostname | Port |
 |---|---|---|---|
-| `vuzfinder.ru`, `www.vuzfinder.ru` | http | `university-frontend` | 3000 |
-| `api.vuzfinder.ru` | http | `university-api` | 8000 |
+| `vuzfinder.ru`, `www.vuzfinder.ru` | http | `127.0.0.1` | 8086 |
+| `api.vuzfinder.ru` | http | `127.0.0.1` | 8087 |
+
+(Вариант для NPM в bridge-сети: forward на `university-frontend:3000` и
+`university-api:8000` по общей сети `PROXY_NETWORK_NAME`; тогда
+`compose.override.yaml` не нужен.)
 
 SSL для обоих: Request a new SSL Certificate (Let's Encrypt), Force SSL, HTTP/2.
 
