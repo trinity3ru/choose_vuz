@@ -264,13 +264,23 @@
   `backend/README.md` (очередь вместо 409, health-API, CLI, parser_type, структура)
   актуализированы.
 
-## Этап 11. Деплой на сервере (вне этой среды, нужен SSH)
+## Этап 11. Деплой на сервере — ВЫПОЛНЕН 2026-07-12 ✅
 
-- [ ] 11.1. `/opt/university`, `git clone`, `.env`.
-- [ ] 11.2. `docker compose build` → `run --rm api alembic upgrade head` → `up -d`.
-- [ ] 11.3. DNS `@/www/api`; Proxy Host (frontend :3000, api :8000) + SSL в NPM.
-- [ ] 11.4. `install-timers.sh`; проверки `curl -I https://vuzfinder.ru`,
-  `curl -I https://api.vuzfinder.ru/api/v1/parser/health`; соседние проекты живы.
+- [x] 11.1. `/opt/university`, `git clone -b vps-deploy`, `.env` (диагностика VPS сохранена
+  в `/root/vps-before-vuzfinder/`). Открытие: NPM на этом VPS в `network_mode: host` →
+  добавлен `compose.override.yaml` (loopback-порты 127.0.0.1:8086/8087, раунд-фикс `a8be832`).
+- [x] 11.2. `build` → том postgres пересоздан (пароль в томе «замораживается» при initdb;
+  плюс fix `64090af`: `%` в пароле ломал configparser в alembic/env.py) → 3 миграции → `up -d`.
+  `smoke-check.sh` — 6/6 на VPS.
+- [x] 11.3. DNS `@/www/api` → IP VPS; Proxy Host'ы NPM: vuzfinder.ru→127.0.0.1:8086,
+  api.vuzfinder.ru→127.0.0.1:8087; SSL Let's Encrypt + Force SSL + HTTP/2. HTTPS 200.
+- [x] 11.4. `install-timers.sh` установлен (13 слотов + recover + health + backup);
+  пробный `backup-db.sh` создан; соседние проекты живы (docker stats — норма, swap не тронут).
+- [x] 11.5. Первый полный прогон: все 13 вузов success (~130 тыс. записей; СПбПУ 76277).
+  Полевые фиксы по итогам: `75f4d67` — из конфига SPBSTU убраны 4 кода, отсутствующие
+  на сайте (63/63 → success); `c14fe62` — у lk.samgtu.ru истёк TLS-сертификат
+  (12.07 09:18 UTC), для SAMGTU временно `verify_ssl=False` (TODO: вернуть после
+  обновления сертификата вузом).
 
 ---
 
