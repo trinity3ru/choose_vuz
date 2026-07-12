@@ -59,6 +59,10 @@ class HttpParser(BaseParser):
     # Таймаут запроса, мс. None -> settings.browser_timeout_ms.
     request_timeout_ms: int | None = None
 
+    # Проверка TLS-сертификата сайта. Отключать только точечно и осознанно
+    # (например, у вуза просрочен сертификат) — данные публичные, риск принят.
+    verify_ssl: bool = True
+
     def extra_headers(self) -> dict[str, str]:
         """Дополнительные HTTP-заголовки конкретного вуза (Referer и т.п.)."""
         return {}
@@ -75,6 +79,7 @@ class HttpParser(BaseParser):
             headers={"User-Agent": USER_AGENT, **self.extra_headers()},
             timeout=httpx.Timeout(timeout_ms / 1000),
             follow_redirects=True,
+            verify=self.verify_ssl,
         )
 
     async def parse(self) -> ParseResult:

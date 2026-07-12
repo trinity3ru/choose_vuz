@@ -40,6 +40,11 @@ REFERER = "https://samgtu.ru/admission/competetivegroup"
 class SamgtuParser(HttpParser):
     """Парсер СамГТУ. Реализует интерфейс HttpParser."""
 
+    # У lk.samgtu.ru просрочен TLS-сертификат (обнаружено 2026-07-12,
+    # certificate has expired). Данные публичные — проверку отключаем.
+    # TODO: вернуть True, когда вуз обновит сертификат.
+    verify_ssl = False
+
     def extra_headers(self) -> dict[str, str]:
         return {"Referer": REFERER}
 
