@@ -29,6 +29,7 @@ HTTP_PARSER_MODULES = [
     "app.parser.kpfu",
     "app.parser.guap",
     "app.parser.spmi",
+    "app.parser.hse",
 ]
 
 

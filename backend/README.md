@@ -40,6 +40,10 @@
   отдельная страница-список на каждую программу (`.pk-ratings-table`).
 - **Санкт-Петербургский горный университет** (`SPMI`) — `priem2026.spmi.ru`,
   server-rendered HTML (BeautifulSoup); `external_id` = `specialization_id` укрупнённой программы.
+- **НИУ ВШЭ, Москва и Санкт-Петербург** (`HSE_MSK`, `HSE_SPB`) — `pk.hse.ru`,
+  JSON-API Angular-приложения; кампусы заведены как два вуза с общим классом парсера,
+  принадлежность кампусу проверяется по полю `filial` заголовка группы;
+  `external_id` = оба UUID из URL списка через `/`.
 
 Каждый вуз — отдельный класс-наследник `BaseParser`. Чтобы добавить новый вуз,
 нужно написать класс парсера и внести его в реестр `PARSER_REGISTRY`
@@ -178,6 +182,23 @@ HTTP-клиент Playwright, HTML разбирается BeautifulSoup.
 - Под одним кодом направления бывает несколько программ — они объединяются в один
   список (как у СПбГУ).
 
+## Как устроен парсер ВШЭ (Москва и Санкт-Петербург)
+
+Страница `pk.hse.ru/admissions/.../applicants/<setId>/<groupId>` — Angular-приложение;
+данные из JSON-API `/admissions/api` (браузер не нужен, httpx):
+
+- `GET /competitve-group/{groupId}` (опечатка «competitve» — авторская, из API ВШЭ) —
+  заголовок: программа, кампус (`filial`), тип мест (`placeType`, «Б» = бюджет),
+  места (`placeCount`), дата формирования (`updatedAt`);
+- `GET /applicant?level=BAK&placeType={placeTypeId}&setOfCompetitiveGroupId={setId}
+  &page=N&size=500` — страницы списка (Spring Page, парсер обходит все).
+
+Кампусы — два вуза конфига (`HSE_MSK`, `HSE_SPB`) с общим классом `HseParser`:
+парсер сверяет `filial` заголовка с городом вуза и требует `placeType.code == «Б»`,
+поэтому перепутанный URL (чужой кампус или платный список) даёт явную ошибку.
+`external_id` направления = `"<setId>/<groupId>"` — оба UUID из адресной строки.
+Согласие: `isConcertToEnrollment`; БВИ: `isWithoutExamsAdmReasonBool`.
+
 ## Как устроен парсер Горного университета (СПб)
 
 Списки отдаются как server-rendered HTML: `GET priem2026.spmi.ru/list?direction_id=7`
@@ -291,6 +312,7 @@ copy .env.example .env
 | SPMI | `external_id` = specialization_id | Ссылки укрупнённых групп на `priem2026.spmi.ru/specialization?direction_id=7`; несколько кодов могут делить один id |
 | KPFU | `external_id` = id института (p_faculty) | Институт из URL iframe `abiturient.kpfu.ru`; программа находится по коду в выпадающем списке |
 | GUAP | по коду в рантайме | Код из сводной таблицы `priem.guap.ru/bach/lists/list_1_1_1_1` |
+| HSE_MSK / HSE_SPB | `external_id` = `setId/groupId` | Открыть бюджетный список направления на `pk.hse.ru`, взять оба UUID из URL `/applicants/<setId>/<groupId>`; кампус и «бюджетность» парсер проверит сам |
 
 ## Как добавить новый вуз
 

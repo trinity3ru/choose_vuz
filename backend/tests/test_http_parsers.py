@@ -14,6 +14,7 @@ import openpyxl
 import pytest
 
 from app.parser.guap import GuapParser
+from app.parser.hse import HseParser
 from app.parser.itmo import ItmoParser
 from app.parser.kpfu import KpfuParser
 from app.parser.leti import LetiParser
@@ -676,6 +677,119 @@ async def test_spmi_parser_with_cache():
     assert first.applicant_code == "8889990"
     assert first.total_score == 255
     assert first.exam_score == 245
+
+
+# ------------------------------------------------------------------ ВШЭ --
+
+_HSE_SET = "set-uuid-1"
+_HSE_GROUP = "group-uuid-1"
+
+
+def _hse_header(filial: str = "Москва", place_code: str = "Б") -> dict:
+    return {
+        "competitiveGroup": "Физика (О Б)",
+        "eduForm": "Очная",
+        "educationProgram": "Физика",
+        "filial": filial,
+        "placeCount": 32,
+        "placeType": {"id": "pt-budget", "code": place_code, "name": "Бюджетные места"},
+        "updatedAt": "12.07.2026 16:02",
+    }
+
+
+def _hse_row(code: str, total: float, agreement: bool = False, bvi: bool = False) -> dict:
+    return {
+        "idEpgu": code,
+        "sumCompetitiveScore": total,
+        "sumEntranceTestScore": total - 10,
+        "achievementsSum": 10.0,
+        "achivementsSumTarget": 0,
+        "isWithoutExamsAdmReasonBool": bvi,
+        "isConcertToEnrollment": agreement,
+        "isHasPrerogativeRight9": False,
+        "isHasPrerogativeRight10": True,
+        "priority": 1,
+        "participantStatus": "Участвует в конкурсе",
+    }
+
+
+async def test_hse_parser_paginates_and_checks_campus():
+    uni = make_university(
+        "HSE_MSK",
+        "https://pk.hse.ru/admissions/bak/BD/applicants",
+        [make_major("03.03.02", external_id=f"{_HSE_SET}/{_HSE_GROUP}")],
+    )
+    parser = HseParser(uni, request_delay_seconds=0)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith(f"/competitve-group/{_HSE_GROUP}"):
+            return httpx.Response(200, json=_hse_header())
+        assert request.url.path.endswith("/applicant")
+        assert request.url.params["setOfCompetitiveGroupId"] == _HSE_SET
+        assert request.url.params["placeType"] == "pt-budget"
+        assert request.url.params["level"] == "BAK"
+        page = int(request.url.params["page"])
+        # Две страницы по две записи (пагинация Spring Page).
+        content = {
+            0: [_hse_row("111", 296.0, agreement=True, bvi=True), _hse_row("222", 280.0)],
+            1: [_hse_row("333", 250.0)],
+        }[page]
+        return httpx.Response(200, json={"content": content, "totalPages": 2})
+
+    mock_client(parser, handler)
+    result = await parser.parse()
+
+    assert result.status == "success"
+    major = result.majors[0]
+    assert major.summary.places == 32
+    assert major.summary.applications == 3  # обе страницы собраны
+    assert major.summary.agreements == 1
+    assert major.summary.list_formed_at == "12.07.2026 16:02"
+    first = major.applicants[0]
+    assert first.applicant_code == "111"
+    assert first.total_score == 296
+    assert first.exam_score == 286
+    assert first.achievement_score == 10
+    assert first.is_bvi is True
+    assert first.preferential_right == "Да"
+
+
+async def test_hse_parser_rejects_wrong_campus():
+    """URL чужого кампуса (СПб для HSE_MSK) даёт явную ошибку, а не чужие данные."""
+    uni = make_university(
+        "HSE_MSK",
+        "https://pk.hse.ru/admissions/bak/BD/applicants",
+        [make_major("03.03.02", external_id=f"{_HSE_SET}/{_HSE_GROUP}")],
+    )
+    parser = HseParser(uni, request_delay_seconds=0)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_hse_header(filial="Санкт-Петербург"))
+
+    mock_client(parser, handler)
+    result = await parser.parse()
+
+    assert result.status == "failed"
+    assert "кампус" in result.errors[0]
+
+
+async def test_hse_parser_rejects_paid_list():
+    """Платный groupId (placeType К) отбрасывается с понятной ошибкой."""
+    uni = make_university(
+        "HSE_MSK",
+        "https://pk.hse.ru/admissions/bak/BD/applicants",
+        [make_major("03.03.02", external_id=f"{_HSE_SET}/{_HSE_GROUP}")],
+    )
+    parser = HseParser(uni, request_delay_seconds=0)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_hse_header(place_code="К"))
+
+    mock_client(parser, handler)
+    result = await parser.parse()
+
+    assert result.status == "failed"
+    assert "не бюджетный" in result.errors[0]
 
 
 # ------------------------------------------------- Общее поведение базы --

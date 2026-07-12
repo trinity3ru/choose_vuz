@@ -1031,6 +1031,78 @@
           }
         }
       ]
+    },
+    {
+      "code": "HSE_MSK",
+      "name": "НИУ «Высшая школа экономики» (Москва)",
+      "url": "https://pk.hse.ru/admissions/bak/BD/applicants",
+      "parser_type": "http",
+      "enabled": true,
+      "majors": [
+        {
+          "code": "03.03.02",
+          "name": "Физика",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          },
+          "external_id": "65e91f33-f12e-11ec-b808-005056989556/7bf95756-c058-11ee-9d71-0050560b40ed"
+        },
+        {
+          "code": "09.03.01",
+          "name": "Информатика и вычислительная техника",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          },
+          "external_id": "65e91e75-f12e-11ec-b808-005056989556/d1b7e4d6-c058-11ee-9d71-0050560b40ed"
+        },
+        {
+          "code": "01.03.02",
+          "name": "Прикладная математика и информатика",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          },
+          "external_id": "85908291-f2be-11ec-b808-005056989556/ebdb240e-c057-11ee-9d71-0050560b40ed"
+        }
+      ]
+    },
+    {
+      "code": "HSE_SPB",
+      "name": "НИУ «Высшая школа экономики» (Санкт-Петербург)",
+      "url": "https://pk.hse.ru/admissions/bak/BD/applicants",
+      "parser_type": "http",
+      "enabled": true,
+      "majors": [
+        {
+          "code": "03.03.02",
+          "name": "Физика",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          },
+          "external_id": "71ea5a88-f12e-11ec-b808-005056989556/dc3e11de-c057-11ee-9d71-0050560b40ed"
+        },
+        {
+          "code": "38.03.05",
+          "name": "Бизнес-информатика",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          },
+          "external_id": "608837ee-e03e-11ee-9d77-0050560b40ed/196a61a4-e03f-11ee-9d77-0050560b40ed"
+        },
+        {
+          "code": "01.03.02",
+          "name": "Прикладная математика и информатика",
+          "params": {
+            "study_form": "Очная",
+            "finance_type": "Бюджетная основа"
+          },
+          "external_id": "be29d1a1-f22c-11ec-b808-005056989556/bc85a0f3-c057-11ee-9d71-0050560b40ed"
+        }
+      ]
     }
   ],
   "parser_settings": {

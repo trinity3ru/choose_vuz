@@ -12,6 +12,7 @@ import logging
 from app.core.config_loader import load_config
 from app.parser.base import BaseParser
 from app.parser.guap import GuapParser
+from app.parser.hse import HseParser
 from app.parser.itmo import ItmoParser
 from app.parser.kpfu import KpfuParser
 from app.parser.leti import LetiParser
@@ -44,6 +45,10 @@ PARSER_REGISTRY: dict[str, type[BaseParser]] = {
     "KPFU": KpfuParser,
     "GUAP": GuapParser,
     "SPMI": SpmiParser,
+    # ВШЭ: два кампуса как два вуза, общий класс парсера (кампус
+    # проверяется по полю filial в заголовке группы).
+    "HSE_MSK": HseParser,
+    "HSE_SPB": HseParser,
 }
 
 # Флаг «парсинг идёт». Приложение однопоточное (asyncio), поэтому простой
