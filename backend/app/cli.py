@@ -217,71 +217,18 @@ async def cmd_check_parser_health(args: argparse.Namespace) -> int:
     """
     Проверка свежести данных по каждому включённому вузу (DB-only).
 
-    Выводит JSON; exit 2 — есть stale-вузы, 0 — все данные свежие.
+    Выводит JSON (тот же формат, что GET /api/v1/parser/health);
+    exit 2 — есть stale-вузы, 0 — все данные свежие.
     (Telegram-уведомления подключаются на этапе 8 плана.)
     """
-    from sqlalchemy import select
-
     from app.core.database import async_session_factory
-    from app.models import ParserRun
-
-    now = datetime.now(timezone.utc)
-    report: list[dict] = []
-    any_stale = False
+    from app.services.health import build_health_report
 
     async with async_session_factory() as s:
-        for code in queue.enabled_codes():
-            # Последний запуск, обновивший данные: success или partial с записями.
-            last_success = (
-                await s.execute(
-                    select(ParserRun)
-                    .where(
-                        ParserRun.university_code == code,
-                        ParserRun.status.in_(("success", "partial")),
-                        ParserRun.records_saved > 0,
-                    )
-                    .order_by(ParserRun.finished_at.desc())
-                    .limit(1)
-                )
-            ).scalar_one_or_none()
+        report = await build_health_report(s)
 
-            last_run = (
-                await s.execute(
-                    select(ParserRun)
-                    .where(
-                        ParserRun.university_code == code,
-                        ParserRun.status.not_in(("queued",)),
-                    )
-                    .order_by(ParserRun.created_at.desc())
-                    .limit(1)
-                )
-            ).scalar_one_or_none()
-
-            age_hours: float | None = None
-            if last_success is not None and last_success.finished_at is not None:
-                age_hours = (now - last_success.finished_at).total_seconds() / 3600
-
-            is_stale = age_hours is None or age_hours > settings.parser_stale_hours
-            any_stale = any_stale or is_stale
-
-            report.append(
-                {
-                    "code": code,
-                    "last_success_at": (
-                        last_success.finished_at.isoformat()
-                        if last_success and last_success.finished_at
-                        else None
-                    ),
-                    "last_run_status": last_run.status if last_run else None,
-                    "age_hours": round(age_hours, 1) if age_hours is not None else None,
-                    "is_stale": is_stale,
-                    "last_error": last_run.error_message if last_run else None,
-                }
-            )
-
-    print(json.dumps({"generated_at": now.isoformat(), "universities": report},
-                     ensure_ascii=False, indent=2))
-    return EXIT_PARTIAL if any_stale else EXIT_OK
+    print(json.dumps(report, ensure_ascii=False, indent=2))
+    return EXIT_PARTIAL if report["status"] == "stale" else EXIT_OK
 
 
 async def cmd_cleanup_snapshots(args: argparse.Namespace) -> int:

@@ -151,11 +151,19 @@
 
 ## Этап 4. Health-API (без импорта парсеров)
 
-- [ ] 4.1. `GET /api/v1/parser/health` — по вузу: `last_success_at`, `last_run_status`, `age_hours`,
-  `is_stale` (`PARSER_STALE_HOURS`), `records_found/saved`, `last_error`.
-- [ ] 4.2. `GET /api/v1/parser/runs` — фильтры `limit/offset/university_code/status/date_from/date_to`.
-- [ ] 4.3. `POST /api/v1/parser/run/{code}` — Bearer `PARSER_TRIGGER_TOKEN`: `401`/`403`/`202` (enqueue).
-- [ ] 4.4. Старые `/parser/start`,`/parser/status` — к новой модели или deprecated.
+- [x] 4.1. `GET /api/v1/parser/health` — по вузу: `last_success_at`, `last_run_status`, `age_hours`,
+  `is_stale` (`PARSER_STALE_HOURS`), `records_found/saved`, `last_error`. Логика вынесена в общий
+  `app/services/health.py` — его же использует CLI `check-parser-health` (systemd-таймер).
+- [x] 4.2. `GET /api/v1/parser/runs` — фильтры `limit/offset/university_code/status/date_from/date_to`,
+  `total` для пагинации, новые сверху.
+- [x] 4.3. `POST /api/v1/parser/run/{code}` — Bearer `PARSER_TRIGGER_TOKEN`: без токена `401`,
+  неверный `403`, успех `202` (enqueue, дубликат → `already_queued`), неизвестный вуз `404`,
+  токен не настроен → `503`.
+- [x] 4.4. `/parser/start`, `/parser/status` помечены `deprecated=True` (OpenAPI) с указанием замены.
+- [x] 4.5. Тесты `tests/test_api.py` (10 шт., httpx.ASGITransport + тестовая PostgreSQL):
+  stale/fresh/старый success/failed с ошибкой; фильтры и пагинация runs; матрица токена
+  401/403/404/202/дедуп/503. Суммарно 46 passed. Живой smoke uvicorn на dev-БД:
+  health отдаёт 13 вузов, runs показывает records_changed=11, матрица POST подтверждена curl.
 
 ## Этап 5. Frontend (Vite SPA)
 
