@@ -20,8 +20,12 @@ isConcertToEnrollment (согласие, ещё одна опечатка), isHa
 
 from app.schemas.parser_schema import ApplicantRow
 
-# Код типа мест «Бюджетные места» в placeType.code.
-BUDGET_PLACE_CODE = "Б"
+# Условие поступления из конфига -> ожидаемый placeType.code списка ВШЭ.
+# Б = «Бюджетные места», К = «С оплатой обучения» (платное).
+PLACE_CODE_BY_FINANCE: dict[str, str] = {
+    "Бюджетная основа": "Б",
+    "Контракт": "К",
+}
 
 
 def score_to_int(value: object) -> int | None:

@@ -55,12 +55,13 @@ def make_major(
     code: str,
     name: str = "Тестовое направление",
     external_id: str | None = None,
+    finance_type: str = "Бюджетная основа",
 ) -> MajorConfig:
-    """Направление с типовыми параметрами (очная, бюджет)."""
+    """Направление с типовыми параметрами (очная; по умолчанию бюджет)."""
     return MajorConfig(
         code=code,
         name=name,
-        params=MajorParams(study_form="Очная", finance_type="Бюджетная основа"),
+        params=MajorParams(study_form="Очная", finance_type=finance_type),
         external_id=external_id,
     )
 

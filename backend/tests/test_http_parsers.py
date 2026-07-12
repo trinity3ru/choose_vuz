@@ -773,8 +773,8 @@ async def test_hse_parser_rejects_wrong_campus():
     assert "кампус" in result.errors[0]
 
 
-async def test_hse_parser_rejects_paid_list():
-    """Платный groupId (placeType К) отбрасывается с понятной ошибкой."""
+async def test_hse_parser_rejects_mismatched_list_type():
+    """Бюджетное направление с платным groupId (К) падает с понятной ошибкой."""
     uni = make_university(
         "HSE_MSK",
         "https://pk.hse.ru/admissions/bak/BD/applicants",
@@ -789,7 +789,40 @@ async def test_hse_parser_rejects_paid_list():
     result = await parser.parse()
 
     assert result.status == "failed"
-    assert "не бюджетный" in result.errors[0]
+    assert "тип списка не совпадает" in result.errors[0]
+
+
+async def test_hse_parser_paid_major_parses_paid_list():
+    """Направление с finance_type=Контракт парсит платный список (placeType К)."""
+    uni = make_university(
+        "HSE_MSK",
+        "https://pk.hse.ru/admissions/bak/BD/applicants",
+        [
+            make_major(
+                "03.03.02-К",
+                name="Физика (платное)",
+                external_id=f"{_HSE_SET}/{_HSE_GROUP}",
+                finance_type="Контракт",
+            )
+        ],
+    )
+    parser = HseParser(uni, request_delay_seconds=0)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith(f"/competitve-group/{_HSE_GROUP}"):
+            return httpx.Response(200, json=_hse_header(place_code="К"))
+        return httpx.Response(
+            200, json={"content": [_hse_row("777", 240.0)], "totalPages": 1}
+        )
+
+    mock_client(parser, handler)
+    result = await parser.parse()
+
+    assert result.status == "success"
+    major = result.majors[0]
+    assert major.code == "03.03.02-К"
+    assert major.summary.applications == 1
+    assert major.applicants[0].applicant_code == "777"
 
 
 # ------------------------------------------------- Общее поведение базы --

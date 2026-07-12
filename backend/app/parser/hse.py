@@ -10,8 +10,12 @@ external_id направления = оба UUID из адресной стро�
     https://pk.hse.ru/admissions/bak/BD/applicants/<setId>/<groupId>
     -> external_id: "<setId>/<groupId>"
 где setId — образовательная программа (набор конкурсных групп),
-groupId — конкретный список (бюджет/платное/квоты). Берём только бюджетный
-(placeType.code == «Б» проверяется по заголовку группы).
+groupId — конкретный список (бюджет/платное/квоты). Ожидаемый тип списка
+определяется по finance_type направления («Бюджетная основа» → Б,
+«Контракт» → К) и сверяется с placeType заголовка группы. ВШЭ — единственный
+вуз проекта, где платные списки парсятся: они заводятся отдельными
+«направлениями» конфига с кодом-суффиксом (например 03.03.02-К «Физика
+(платное)»), чтобы бюджет и платное смотрелись раздельно.
 
 Браузер не нужен: обычные GET через httpx (см. hse_mapping — описание API).
 """
@@ -22,7 +26,7 @@ from typing import Any
 
 import httpx
 
-from app.parser.hse_mapping import BUDGET_PLACE_CODE, row_to_applicant
+from app.parser.hse_mapping import PLACE_CODE_BY_FINANCE, row_to_applicant
 from app.parser.http_base import HttpParser, raise_for_status
 from app.schemas.config_schema import MajorConfig
 from app.schemas.parser_schema import MajorResult, MajorSummary
@@ -60,11 +64,20 @@ class HseParser(HttpParser):
         raise_for_status(resp, "заголовок конкурсной группы")
         header = resp.json()
 
-        place_type = header.get("placeType") or {}
-        if place_type.get("code") != BUDGET_PLACE_CODE:
+        expected_code = PLACE_CODE_BY_FINANCE.get(major.params.finance_type)
+        if expected_code is None:
             raise RuntimeError(
-                f"список не бюджетный (placeType={place_type.get('code')}: "
-                f"{place_type.get('name')}) — проверьте groupId в external_id"
+                f"условие «{major.params.finance_type}» не поддерживается "
+                f"парсером ВШЭ (есть: {', '.join(PLACE_CODE_BY_FINANCE)})"
+            )
+
+        place_type = header.get("placeType") or {}
+        if place_type.get("code") != expected_code:
+            raise RuntimeError(
+                f"тип списка не совпадает: ожидался «{expected_code}» "
+                f"({major.params.finance_type}), а groupId ведёт на "
+                f"«{place_type.get('code')}: {place_type.get('name')}» — "
+                f"проверьте external_id"
             )
 
         expected_filial = _EXPECTED_FILIAL.get(self.university.code)
