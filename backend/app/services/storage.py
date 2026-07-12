@@ -9,6 +9,7 @@
 """
 
 import logging
+import uuid
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,21 +36,26 @@ def _trim_varchar(value: str | None, max_len: int = _MAX_VARCHAR) -> str | None:
 
 
 async def save_parse_result(
-    university: UniversityConfig, result: ParseResult
+    university: UniversityConfig,
+    result: ParseResult,
+    parser_run_id: uuid.UUID | None = None,
 ) -> ParseSnapshot:
     """
     Сохранить результат парсинга одного вуза в БД (в транзакции).
 
     :param university: конфиг вуза (нужен для имени вуза).
     :param result: результат работы парсера.
+    :param parser_run_id: запуск parser_runs, создавший снимок (если есть).
     :return: созданный снимок (ParseSnapshot).
     """
     async with async_session_factory() as session:
         async with session.begin():  # автоматический commit/rollback
             university_obj = await _get_or_create_university(session, university)
 
-            # Снимок фиксирует момент запуска и итоговый статус.
+            # Снимок фиксирует момент запуска, вуз и итоговый статус.
             snapshot = ParseSnapshot(
+                university_id=university_obj.id,
+                parser_run_id=parser_run_id,
                 status=result.status,
                 error_log="\n".join(result.errors) if result.errors else None,
             )

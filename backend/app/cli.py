@@ -23,10 +23,11 @@ import json
 import logging
 import signal
 import sys
+import uuid
 from datetime import datetime, timezone
 
 from app.core.config import settings
-from app.services import queue
+from app.services import changes, queue
 
 logger = logging.getLogger(__name__)
 
@@ -47,60 +48,61 @@ def _summary_to_exit_code(status: str) -> int:
     return EXIT_ERROR
 
 
-async def _run_one_with_tracking(code: str) -> str:
+async def _records_changed_safe(summary: dict) -> int | None:
     """
-    Выполнить парсинг вуза с записью жизненного цикла в parser_runs.
+    Посчитать records_changed для снимка запуска (некритично: ошибки глотаем).
 
-    Возвращает итоговый статус (success/partial/failed).
-    Используется прямыми командами (parse-university/parse-all).
+    Считается ДО finalize, чтобы метрика попала в ту же строку parser_runs.
+    """
+    try:
+        return await changes.compute_records_changed(uuid.UUID(summary["snapshot_id"]))
+    except Exception:  # noqa: BLE001 (метрика не должна ронять запуск)
+        logger.exception("Не удалось посчитать records_changed")
+        return None
+
+
+async def _execute_run(run) -> str:
+    """
+    Выполнить запуск (созданный напрямую или забранный из очереди):
+    парсинг -> снимок -> records_changed -> финализация parser_runs.
     """
     # Ленивый импорт: parser_runner тянет все парсеры (включая Playwright).
     from app.services import parser_runner
 
-    run = await queue.start_direct_run(code)
     try:
-        summary = await parser_runner.run_university(run.university_code)
+        summary = await parser_runner.run_university(
+            run.university_code, parser_run_id=run.id
+        )
     except Exception as exc:  # noqa: BLE001
-        logger.exception("Запуск %s упал", code)
+        logger.exception("Запуск %s (%s) упал", run.id, run.university_code)
         await queue.finalize(run.id, "failed", error_message=str(exc)[:2000])
         return "failed"
+
+    records_changed = await _records_changed_safe(summary)
 
     await queue.finalize(
         run.id,
         status=summary["status"],
         records_found=summary["records_found"],
         records_saved=summary["records_saved"],
+        records_changed=records_changed,
         error_message="\n".join(summary["errors"])[:2000] or None,
     )
     logger.info(
-        "%s: %s, направлений=%d, записей=%d",
-        code,
+        "%s: %s, направлений=%d, записей=%d, изменений=%s",
+        run.university_code,
         summary["status"],
         summary["majors_parsed"],
         summary["records_saved"],
+        records_changed,
     )
     return summary["status"]
 
 
-async def _execute_claimed(run) -> str:
-    """Выполнить уже забранное из очереди задание (consume-queue)."""
-    from app.services import parser_runner
-
-    try:
-        summary = await parser_runner.run_university(run.university_code)
-    except Exception as exc:  # noqa: BLE001
-        logger.exception("Задание %s (%s) упало", run.id, run.university_code)
-        await queue.finalize(run.id, "failed", error_message=str(exc)[:2000])
-        return "failed"
-
-    await queue.finalize(
-        run.id,
-        status=summary["status"],
-        records_found=summary["records_found"],
-        records_saved=summary["records_saved"],
-        error_message="\n".join(summary["errors"])[:2000] or None,
-    )
-    return summary["status"]
+async def _run_one_with_tracking(code: str) -> str:
+    """Прямой запуск вуза (parse-university/parse-all) с записью в parser_runs."""
+    run = await queue.start_direct_run(code)
+    return await _execute_run(run)
 
 
 # -------------------------------------------------------------- commands --
@@ -151,7 +153,7 @@ async def cmd_consume_queue(args: argparse.Namespace) -> int:
             continue
 
         logger.info("Задание %s: парсинг %s", run.id, run.university_code)
-        status = await _execute_claimed(run)
+        status = await _execute_run(run)
         print(f"{run.university_code}: {status}")
         if args.once:
             return _summary_to_exit_code(status)

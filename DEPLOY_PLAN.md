@@ -129,15 +129,25 @@
 
 ## Этап 3. БД: `parser_runs`, ссылки снимка, retention
 
-- [ ] 3.1. Модель `parser_run.py` (ТЗ §11); статусы `queued/running/success/partial/failed/skipped`.
-- [ ] 3.2. Миграция: таблица `parser_runs` (+индексы); `parse_snapshots.parser_run_id`
-  (FK, **ON DELETE SET NULL**); `parse_snapshots.university_id` (FK) с явным правилом backfill:
-  (1) `Applicant → Major → University`; (2) при отсутствии заявлений `MajorStats → Major → University`;
-  (3) оставшиеся неатрибутируемые legacy-снимки удалить; затем установить `NOT NULL`.
-- [ ] 3.3. `storage.save_parse_result` проставляет `university_id` (+`parser_run_id`).
-- [ ] 3.4. `records_changed`: ключ `(major_id, applicant_code)`; `added+removed+modified` vs
-  последнего успешного снимка вуза; нет предыдущего → `NULL`. Считает worker при финализации.
-- [ ] 3.5. `cleanup-snapshots` по `SNAPSHOT_RETENTION_DAYS`; retention снимков и запусков независимы.
+- [x] 3.1. Модель `parser_run.py` (ТЗ §11) — сделана на этапе 2 (п. 2.7).
+- [x] 3.2. Миграция `c4f1a8d27b93`: `parse_snapshots.parser_run_id` (FK, **ON DELETE SET NULL**);
+  `parse_snapshots.university_id` (FK CASCADE, index) с явным backfill:
+  (1) `Applicant → Major → University`; (2) `MajorStats → Major → University`;
+  (3) неатрибутируемые legacy-снимки удаляются; затем `NOT NULL`.
+  Применена к dev-БД: все 131 снимка атрибутированы по 13 вузам, удалений 0.
+- [x] 3.3. `storage.save_parse_result(university, result, parser_run_id=None)` проставляет
+  `university_id` + `parser_run_id`; `parser_runner.run_university` прокидывает id запуска.
+- [x] 3.4. `app/services/changes.py::compute_records_changed`: ключ `(major_id, applicant_code)`;
+  `added+removed+modified` (поля `{total_score, priority, has_agreement, review_status}`) vs
+  последнего `success`-снимка вуза; нет предыдущего → `NULL`. Считается в CLI (`_execute_run`)
+  до финализации; ошибки метрики не роняют запуск.
+- [x] 3.5. `cleanup-snapshots`: retention независимы — подтверждено тестом (снимок удалён,
+  parser_runs целы; `parser_run_id` у снимков остальных запусков обнуляется только при
+  удалении самого запуска).
+- [x] 3.6. Тесты `tests/test_snapshots.py` (6 шт.): ссылки снимка, семантика records_changed
+  (added/removed/modified, ключ по направлению, сравнение только с success), retention.
+  Суммарно 36 passed. Живой E2E: повторный парсинг ИТМО → records_changed=11,
+  снимок связан с запуском (snapshot_linked=true).
 
 ## Этап 4. Health-API (без импорта парсеров)
 

@@ -19,6 +19,7 @@ os.environ.setdefault("DATABASE_URL", TEST_DATABASE_URL)
 from typing import Callable  # noqa: E402
 
 import httpx  # noqa: E402
+import pytest  # noqa: E402
 
 from app.parser.http_base import USER_AGENT, HttpParser  # noqa: E402
 from app.schemas.config_schema import (  # noqa: E402
@@ -28,6 +29,26 @@ from app.schemas.config_schema import (  # noqa: E402
 )
 
 Handler = Callable[[httpx.Request], httpx.Response]
+
+
+@pytest.fixture
+async def clean_db():
+    """
+    Чистая схема в тестовой PostgreSQL (drop_all + create_all на каждый тест).
+
+    Если база недоступна — тест пропускается. В teardown сбрасывается пул
+    engine: у каждого теста свой event loop, соединения нельзя переносить.
+    """
+    from app.core.database import Base, engine
+
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as exc:  # noqa: BLE001
+        pytest.skip(f"тестовая PostgreSQL недоступна: {exc}")
+    yield
+    await engine.dispose()
 
 
 def make_major(

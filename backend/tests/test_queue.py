@@ -5,32 +5,20 @@
 localhost:5544 из dev-контейнера). Если базы нет — тесты пропускаются.
 """
 
-import asyncio
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from sqlalchemy import delete, select
+from sqlalchemy import select
 
-from app.core.database import Base, async_session_factory, engine
+from app.core.database import async_session_factory
 from app.models import ParserRun
 from app.services import queue
 
 
 @pytest.fixture(autouse=True)
-async def clean_db():
-    """Схема + чистая таблица parser_runs (skip, если PostgreSQL недоступна)."""
-    try:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        async with async_session_factory() as s:
-            async with s.begin():
-                await s.execute(delete(ParserRun))
-    except Exception as exc:  # noqa: BLE001
-        pytest.skip(f"тестовая PostgreSQL недоступна: {exc}")
+async def _db(clean_db):
+    """Все тесты модуля работают на чистой схеме (см. conftest.clean_db)."""
     yield
-    # У каждого теста свой event loop: сбрасываем пул соединений engine,
-    # иначе следующий тест получит соединение из «мёртвого» цикла.
-    await engine.dispose()
 
 
 async def _get_run(run_id) -> ParserRun:

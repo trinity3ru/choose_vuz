@@ -95,12 +95,17 @@ async def run_parser(major_code: str | None = None) -> list[dict]:
         end()
 
 
-async def run_university(code: str, major_code: str | None = None) -> dict:
+async def run_university(
+    code: str,
+    major_code: str | None = None,
+    parser_run_id=None,
+) -> dict:
     """
     Спарсить один вуз (для CLI/worker) и сохранить снимок в БД.
 
     :param code: канонический код вуза из config.json (SPBSTU, ITMO, ...).
     :param major_code: если указан — только одно направление.
+    :param parser_run_id: id запуска parser_runs (свяжет снимок с запуском).
     :return: сводка запуска (status, счётчики, ошибки) для parser_runs.
     :raises RuntimeError: если вуз не найден/выключен или нет парсера.
     """
@@ -124,7 +129,7 @@ async def run_university(code: str, major_code: str | None = None) -> dict:
 
     parser = parser_cls(uni_config, config.parser_settings.request_delay_seconds)
     result = await parser.parse()
-    snapshot = await save_parse_result(uni_config, result)
+    snapshot = await save_parse_result(uni_config, result, parser_run_id=parser_run_id)
 
     records = sum(len(m.applicants) for m in result.majors)
     return {
