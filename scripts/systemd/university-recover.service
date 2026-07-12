@@ -1,0 +1,14 @@
+# VuzFinder: пометить зависшие running-задачи как failed (worker interrupted).
+#
+# Выполняется через api-контейнер (DB-only): уведомление о падении worker
+# придёт, даже когда сам worker мёртв. Порог — PARSER_STUCK_MINUTES из .env.
+
+[Unit]
+Description=VuzFinder: recover stuck parser runs
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/university
+ExecStart=/usr/bin/docker compose exec -T api python -m app.cli recover-stuck-runs

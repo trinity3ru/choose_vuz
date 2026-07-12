@@ -1,0 +1,11 @@
+# Каждые 15 минут проверять зависшие running-задачи.
+
+[Unit]
+Description=VuzFinder: recover stuck runs every 15 minutes
+
+[Timer]
+OnCalendar=*-*-* *:00/15:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

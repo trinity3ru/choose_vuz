@@ -1,0 +1,18 @@
+# VuzFinder: постановка парсинга вуза %i в очередь (ТЗ §9).
+#
+# Шаблонный юнит: инстанс university-parser@SPBSTU.service ставит в очередь
+# вуз SPBSTU. Таймеры-инстансы генерирует scripts/install-timers.sh —
+# по одному на вуз, разнесённые по ночным слотам.
+#
+# Команда идёт через api-контейнер (DB-only, без Playwright): даже если
+# worker лежит, задание попадёт в очередь и выполнится после его подъёма.
+
+[Unit]
+Description=VuzFinder: enqueue parser for %i
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/university
+ExecStart=/usr/bin/docker compose exec -T api python -m app.cli enqueue %i

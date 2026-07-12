@@ -1,0 +1,17 @@
+# VuzFinder: почасовая проверка свежести данных (stale) по всем вузам.
+#
+# Выполняется через api-контейнер (DB-only): stale-алерт придёт, даже если
+# ночные таймеры не сработали или worker вообще не запускался (раунд D плана).
+# Порог свежести — PARSER_STALE_HOURS из .env.
+
+[Unit]
+Description=VuzFinder: hourly parser health check (stale alert)
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/university
+ExecStart=/usr/bin/docker compose exec -T api python -m app.cli check-parser-health
+# exit 2 (есть stale-вузы) — это отчёт, а не сбой юнита.
+SuccessExitStatus=0 2

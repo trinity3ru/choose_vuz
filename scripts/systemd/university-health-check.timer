@@ -1,0 +1,11 @@
+# Ежечасная проверка свежести данных (в :05, чтобы не толкаться в :00).
+
+[Unit]
+Description=VuzFinder: hourly parser health check
+
+[Timer]
+OnCalendar=*-*-* *:05:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

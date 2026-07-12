@@ -210,15 +210,20 @@
 
 ## Этап 7. Расписание (systemd) + flock
 
-- [ ] 7.1. `scripts/systemd/university-parser@.service` (oneshot,
-  `ExecStart=docker compose exec -T api python -m app.cli enqueue %i`) + `scripts/install-timers.sh`
-  (per-code `@.timer` из `config.json`, сдвиг 00:30/шаг 30 мин).
-- [ ] 7.2. `university-recover.service`/`.timer` — периодический `recover-stuck-runs`
-  (порог `PARSER_STUCK_MINUTES`) через `api`-контейнер; recover также при старте consumer.
-- [ ] 7.3. `university-health-check.service`/`.timer` — почасовой `check-parser-health` через
-  `api`-контейнер (`docker compose exec -T api ...`) → stale-алерт приходит даже при неработающем worker.
-- [ ] 7.4. `flock`-обёртка для consumer (единственный процесс) + advisory-lock как вторая защита;
-  `PARSER_CONCURRENCY=1`.
+- [x] 7.1. `scripts/systemd/university-parser@.service` (oneshot,
+  `ExecStart=docker compose exec -T api python -m app.cli enqueue %i`) + `scripts/install-timers.sh`:
+  генерирует per-code `@.timer` из `config.json` (сдвиг 00:30/шаг 30 мин, флаги `--start/--step`,
+  `--uninstall`, `Persistent=true`); подставляет фактический каталог проекта в юниты.
+  Dry-run проверен: 13 слотов 00:30→06:30 точно по ТЗ §9.1, переход через полночь корректен.
+- [x] 7.2. `university-recover.service`/`.timer` — `recover-stuck-runs` каждые 15 минут через
+  `api`-контейнер; recover также выполняется при старте consumer (этап 2).
+- [x] 7.3. `university-health-check.service`/`.timer` — почасовой `check-parser-health` (в :05)
+  через `api`-контейнер → stale-алерт придёт даже при мёртвом worker. `SuccessExitStatus=0 2`
+  (exit 2 «есть stale» — отчёт, не сбой юнита).
+- [x] 7.4. Защита от параллельного парсинга (готово на этапах 2/6): flock на общем lock-файле
+  хоста (`./locks:/var/lock/university`) — команда worker-контейнера; advisory-lock PostgreSQL —
+  вторая защита (consume-queue и ручной `parse-university`). `PARSER_CONCURRENCY=1` обеспечен
+  конструктивно: единственный consumer разбирает очередь строго последовательно.
 
 ## Этап 8. Telegram-алерты + бэкапы
 
