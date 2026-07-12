@@ -213,44 +213,67 @@ copy .env.example .env
 ## Запуск
 
 ```powershell
+# API (парсинг сам не выполняет — только очередь и выдача данных):
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+
+# Worker (в отдельном окне — разбирает очередь parser_runs):
+.\.venv\Scripts\python.exe -m app.cli consume-queue
 ```
 
 Документация API (Swagger): http://127.0.0.1:8000/docs
+Проще всего — `start-dev.ps1` из корня репозитория (поднимает всё сразу).
 
 ## API
 
+Мониторинг и управление (см. также DEPLOY.md):
+
 - `GET  /health` — проверка, что сервис жив
-- `POST /api/v1/parser/start` — запустить парсинг в фоне.
-  Тело необязательно: `{"major_code": "09.03.04"}` — только одно направление.
-  Если парсинг уже идёт, вернётся `409`.
-- `GET  /api/v1/parser/status` — статус последнего снимка и признак текущей работы
+- `GET  /api/v1/parser/health` — свежесть данных по каждому вузу (stale, last_error...)
+- `GET  /api/v1/parser/runs` — история запусков
+  (`limit/offset/university_code/status/date_from/date_to`)
+- `POST /api/v1/parser/run/{code}` — ручной запуск вуза, Bearer `PARSER_TRIGGER_TOKEN`
+  (401 без токена / 403 неверный / 202 поставлено в очередь)
 - `GET  /api/v1/config` — текущая конфигурация
+- `POST /api/v1/parser/start`, `GET /api/v1/parser/status` — deprecated
 
-Пример запуска парсинга:
+Данные для фронтенда: `GET /api/v1/data/universities`, `GET /api/v1/data/applicants`.
 
-```powershell
-curl.exe -s -X POST http://127.0.0.1:8000/api/v1/parser/start
-```
+## CLI (python -m app.cli)
+
+- `enqueue <code>` — поставить вуз в очередь (DB-only, работает в api-образе)
+- `consume-queue [--once]` — цикл воркера (парсит, только в worker-образе)
+- `parse-university <code>` / `parse-all` — прямой запуск (advisory-lock)
+- `recover-stuck-runs` — пометить зависшие running-задачи (worker interrupted)
+- `check-parser-health` — отчёт о свежести + stale-алерт в Telegram
+- `cleanup-snapshots` — удалить снимки старше `SNAPSHOT_RETENTION_DAYS`
+
+Коды выхода: 0 — успех, 1 — ошибка, 2 — частичный/подозрительный результат.
+Коды вузов регистронезависимы (`itmo` == `ITMO`).
 
 ## Конфигурация
 
 Список вузов и направлений задаётся вручную в [config.json](config.json).
-Направления сопоставляются с сайтом по коду (например, `09.03.04`).
-Для вузов с прямым идентификатором программы (Самарский) в направлении указывается
-необязательное поле `external_id` (там это `pk` из URL рейтинга).
-Интервал автозапуска — `parser_settings.parse_interval_hours`.
+У каждого вуза обязателен `parser_type`: `http` (обычные запросы, httpx) или
+`playwright` (нужен браузер — СПбПУ, СПбГУТ). Направления сопоставляются с сайтом
+по коду (например, `09.03.04`); для вузов с прямым идентификатором программы
+указывается `external_id`. Интервал автозапуска планировщика
+(`parser_settings.parse_interval_hours`) действует только при `ENABLE_SCHEDULER=true`
+(локальная разработка); в проде расписание — systemd-таймеры.
 
 ## Структура
 
 ```text
 app/
 ├── main.py            # точка входа, lifespan, роутеры
+├── cli.py             # команды воркера и обслуживания (python -m app.cli)
 ├── core/              # настройки, подключение к БД, загрузка конфига
-├── models/            # таблицы БД (SQLAlchemy)
+├── models/            # таблицы БД (SQLAlchemy), в т.ч. parser_runs
 ├── schemas/           # Pydantic: валидация конфига и данных парсера
-├── parser/            # BaseParser + парсер СПбПУ + нормализация данных
-├── services/          # сохранение в БД и раннер парсера
+├── parser/            # BaseParser/HttpParser + парсеры 13 вузов
+├── services/          # queue, storage, changes, health, notifications, runner
 ├── api/               # HTTP-эндпоинты
-└── scheduler/         # периодический запуск (APScheduler)
+└── scheduler/         # периодическая постановка в очередь (dev, APScheduler)
 ```
+
+Тесты: `pytest` из каталога backend (56 шт.; нужна тестовая PostgreSQL,
+см. tests/conftest.py).

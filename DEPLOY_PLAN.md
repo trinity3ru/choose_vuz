@@ -244,17 +244,25 @@
 
 ## Этап 9. Тесты и smoke-check
 
-- [ ] 9.1. `backend/tests/` (pytest, тест-БД PostgreSQL): CLI/exit-коды; токен 401/403/202;
-  очередь (enqueue/claim/дедуп/recover-stuck); health/stale/фильтры; retention;
-  `records_changed` по `(major_id, applicant_code)`; import-гигиена; парсер-фикстуры (этап 1).
-- [ ] 9.2. `scripts/smoke-check.sh`: `compose build` → `alembic upgrade head` → `/health` и
-  `/api/v1/parser/health` → проверка отсутствия Chromium/Playwright в API-образе.
+- [x] 9.1. `backend/tests/` — 56 тестов против тестовой PostgreSQL, накоплены по этапам:
+  парсер-фикстуры 11 вузов (этап 1), очередь/CLI/advisory-lock (этап 2), снимки и
+  records_changed (этап 3), health-API и токен (этап 4), алерты (этап 8), import-гигиена.
+- [x] 9.2. `scripts/smoke-check.sh` (6 шагов): build → api-образ без playwright/bs4 +
+  импорт app.main/app.cli → worker: flock+CLI → postgres healthy + `alembic upgrade head`
+  → `/health` и `/api/v1/parser/health` (13 вузов) → frontend :3000 из proxy-сети.
+  Живой прогон пройден полностью; стек остаётся запущенным (штатное послед деплоя состояние).
 
 ## Этап 10. Конфиги и документация
 
-- [ ] 10.1. `.env.example` по ТЗ §19 + `VITE_API_URL`, `PARSER_STUCK_MINUTES`, `ENABLE_SCHEDULER`,
-  `PARSER_RECORDS_DROP_PERCENT`.
-- [ ] 10.2. `DEPLOY.md` (12 пунктов ТЗ §22) + корневой `README.md` + чек-лист приёмки ТЗ §25.
+- [x] 10.1. `.env.example` полный: ТЗ §19 + `PROXY_NETWORK_NAME`, `VITE_API_URL`,
+  `QUEUE_POLL_SECONDS`, `PARSER_STUCK_MINUTES`, `PARSER_RECORDS_DROP_PERCENT`,
+  `ENABLE_SCHEDULER` (MIGRATION_DATABASE_URL помечен как зарезервированный —
+  Alembic использует DATABASE_URL).
+- [x] 10.2. `DEPLOY.md` полный: 12 разделов ТЗ §22 (подготовка VPS → git pull-обновление),
+  systemd-таймеры, smoke-check, раздел «Что запрещено» (ТЗ §4.13), чек-лист приёмки
+  ТЗ §25 (25 пунктов). Корневой `README.md` (архитектура, интерфейсы, dev) и
+  `backend/README.md` (очередь вместо 409, health-API, CLI, parser_type, структура)
+  актуализированы.
 
 ## Этап 11. Деплой на сервере (вне этой среды, нужен SSH)
 
