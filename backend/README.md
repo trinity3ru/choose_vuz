@@ -260,6 +260,72 @@ copy .env.example .env
 (`parser_settings.parse_interval_hours`) действует только при `ENABLE_SCHEDULER=true`
 (локальная разработка); в проде расписание — systemd-таймеры.
 
+## Как добавить направление существующему вузу
+
+Общий цикл (все правки — только через git, не на VPS):
+
+```text
+1. Найти идентификатор направления на сайте вуза (см. таблицу ниже)
+2. Добавить объект в majors вуза в config.json
+3. Проверить конфиг:   python -c "from app.core.config_loader import load_config; load_config()"
+4. Живой прогон:       python -m app.cli parse-university <CODE>   (dev-БД)
+5. commit + push
+6. VPS: git pull && docker compose build api worker && docker compose up -d api worker
+7. VPS: docker compose exec -T api python -m app.cli enqueue <code> → проверить /parser/health
+```
+
+Способ сопоставления направления с сайтом у каждого вуза свой:
+
+| Вуз | Сопоставление | Где брать идентификатор |
+|---|---|---|
+| SPBSTU | по коду в рантайме | Код должен буквально совпадать с `my.spbstu.ru` (get-code-list). Синтетические суффиксы (`38.03.01_29`) сайт не знает |
+| SUT | по коду в рантайме | Код из списка групп `priem.sut.ru` (get_spec) |
+| SAMARA | `external_id` = pk | Открыть рейтинг направления на `priemsamara.ru`, взять `?pk=N` из URL |
+| SAMGTU | по коду в рантайме | Название группы в API kcps начинается с кода (очная, СамГТУ, КЦП) |
+| SPBGU | по коду в рантайме | Код из meta отчёта; несколько программ одного кода объединяются |
+| TLTSU | по коду в рантайме, но в пределах одного `dep` | Направления другого института = другой `dep` в `university.url` — сейчас парсится один институт |
+| LETI | `external_id` = UUID | На `abit.etu.ru` открыть список направления, взять `id=UUID` из URL виджета `lists.priem.etu.ru` |
+| MPEI | `external_id` = имя файла | Оглавление `pk.mpei.ru/info/entrants_list.html` → `entrants_listN.html` направления |
+| ITMO | `external_id` = competitive_group_id | Число из URL `abit.itmo.ru/rating/bachelor/budget/<id>` |
+| SPBAU | по форме/категории в xlsx | Направление должно присутствовать в общем xlsx (сейчас только 03.03.01) |
+| SPMI | `external_id` = specialization_id | Ссылки укрупнённых групп на `priem2026.spmi.ru/specialization?direction_id=7`; несколько кодов могут делить один id |
+| KPFU | `external_id` = id института (p_faculty) | Институт из URL iframe `abiturient.kpfu.ru`; программа находится по коду в выпадающем списке |
+| GUAP | по коду в рантайме | Код из сводной таблицы `priem.guap.ru/bach/lists/list_1_1_1_1` |
+
+## Как добавить новый вуз
+
+```text
+1. Разведка сайта: как отдаются списки (HTML / JSON / xlsx)? нужен ли браузер?
+   → parser_type: http (почти всегда достаточно) или playwright.
+   Полезно сохранить образцы ответов (см. scripts/explore_*.py как образец).
+2. Код (два файла):
+   app/parser/<code>_mapping.py — чистый разбор разметки → ApplicantRow
+   app/parser/<code>.py         — класс-наследник HttpParser:
+                                  _parse_major() + при необходимости _prepare();
+                                  особые случаи — см. tltsu (один отчёт),
+                                  spbau (общий xlsx), spmi (кэш), kpfu (cp1251)
+3. Зарегистрировать класс в PARSER_REGISTRY (app/services/parser_runner.py)
+4. Добавить вуз в config.json: code UPPERCASE, parser_type, enabled, majors
+5. Тесты (три места!):
+   - tests/test_http_parsers.py — фикстура по реальной разметке + тест parse()
+   - tests/test_import_hygiene.py — добавить модуль в HTTP_PARSER_MODULES
+   - pytest -q — все зелёные
+6. Живой прогон: python -m app.cli parse-university <CODE>
+7. Описание вуза в README (раздел «Поддерживаемые вузы» + «Как устроен парсер»)
+8. commit + push
+9. VPS: git pull && docker compose build api worker && docker compose up -d api worker
+10. VPS: sudo bash scripts/install-timers.sh   ← ОБЯЗАТЕЛЬНО: новый вуз = новый ночной слот
+11. VPS: enqueue <code> → /parser/health: success, is_stale=false
+```
+
+Частые грабли:
+- забыли PARSER_REGISTRY → «Нет парсера для вуза X» в логах worker;
+- забыли install-timers.sh → вуз парсится только вручную, через сутки придёт stale-алерт;
+- у сайта просрочен/самоподписанный TLS-сертификат → точечно `verify_ssl = False`
+  в классе парсера с комментарием-TODO (см. SamgtuParser);
+- сайт отдаёт заглушку без браузерного User-Agent → он уже задан в HttpParser;
+- Playwright использовать только когда без браузера действительно нельзя (ТЗ §8.2).
+
 ## Структура
 
 ```text
