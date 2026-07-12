@@ -224,14 +224,6 @@
           }
         },
         {
-          "code": "14.05.02_01",
-          "name": "Проектирование и эксплуатация атомных станций (филиал ИЯЭ в г. Сосновый Бор)",
-          "params": {
-            "study_form": "Очная",
-            "finance_type": "Бюджетная основа"
-          }
-        },
-        {
           "code": "15.03.01",
           "name": "Машиностроение",
           "params": {
@@ -392,24 +384,8 @@
           }
         },
         {
-          "code": "38.03.01_29",
-          "name": "Экономика цифрового предприятия (международная образовательная программа) / Digital Enterprise (International Educational Program)",
-          "params": {
-            "study_form": "Очная",
-            "finance_type": "Бюджетная основа"
-          }
-        },
-        {
           "code": "38.03.02",
           "name": "Менеджмент",
-          "params": {
-            "study_form": "Очная",
-            "finance_type": "Бюджетная основа"
-          }
-        },
-        {
-          "code": "38.03.02_26",
-          "name": "Международный бизнес (международная образовательная программа) / International Business (International Educational Program)",
           "params": {
             "study_form": "Очная",
             "finance_type": "Бюджетная основа"
@@ -434,14 +410,6 @@
         {
           "code": "38.03.06",
           "name": "Торговое дело",
-          "params": {
-            "study_form": "Очная",
-            "finance_type": "Бюджетная основа"
-          }
-        },
-        {
-          "code": "38.03.06_02",
-          "name": "Международная торговля (международная образовательная программа) / International Trade (International Educational Program)",
           "params": {
             "study_form": "Очная",
             "finance_type": "Бюджетная основа"
