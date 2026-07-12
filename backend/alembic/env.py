@@ -26,7 +26,9 @@ import app.models  # noqa: F401  (нужен для регистрации мо�
 config = context.config
 
 # Подставляем строку подключения из наших настроек (.env), а не из alembic.ini.
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# configparser трактует % как начало интерполяции — экранируем (%%),
+# иначе пароль со знаком процента ломает запуск миграций.
+config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
 
 # Настройка логирования из alembic.ini.
 if config.config_file_name is not None:
