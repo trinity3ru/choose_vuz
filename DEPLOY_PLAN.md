@@ -167,13 +167,17 @@
 
 ## Этап 5. Frontend (Vite SPA)
 
-- [ ] 5.1. `frontend/src/api.ts`: база из `VITE_API_URL` (`import.meta.env.VITE_API_URL ?? ""` +
-  `/api/v1/...`); в dev — пусто (работает Vite-прокси), в prod — `https://api.vuzfinder.ru`.
-- [ ] 5.2. Клиент `/api/v1/parser/health` + индикатор свежести/устаревания данных (по вузу).
-- [ ] 5.3. Состояние «API временно недоступно» (сетевые ошибки/5xx) — понятный экран + retry,
-  в т.ч. в `hooks/useApplicantData.ts` и `App.tsx`.
-- [ ] 5.4. Backend prod-CORS только `https://vuzfinder.ru`, `https://www.vuzfinder.ru`
-  (через `settings.cors_origins` / env).
+- [x] 5.1. `frontend/src/api.ts`: база из `VITE_API_URL` (в dev пусто — Vite-прокси, в prod —
+  `https://api.vuzfinder.ru`); `vite-env.d.ts` с типизацией. Инъекция проверена по бандлу.
+- [x] 5.2. `hooks/useParserHealth.ts` + бейдж свежести в шапке по выбранному вузу:
+  «Обновлено N ч назад» (зелёный) / «⚠ …» (stale, оранжевый) / «Данные ещё не собирались».
+  Ошибка health некритична — бейдж просто скрывается.
+- [x] 5.3. `ApiUnavailableError` (сетевые ошибки + 5xx) → экран «API временно недоступно»
+  с кнопкой «Повторить» на обоих уровнях: список вузов (App) и заявления (useApplicantData.retry).
+- [x] 5.4. Prod-CORS через env: `CORS_ORIGINS=https://vuzfinder.ru,https://www.vuzfinder.ru`
+  в корневом `.env.example`; main.py использует `settings.cors_origins_list` (без изменений кода).
+- [x] 5.5. Сборка: `tsc -b && vite build` чистые; строки новых экранов и prod-URL
+  подтверждены в собранном бандле.
 
 ## Этап 6. Docker: три образа + compose
 

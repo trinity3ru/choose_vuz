@@ -38,3 +38,23 @@ export interface ApplicantsResponse {
   stats: MajorStats | null;
   applicants: Applicant[];
 }
+
+// --- Состояние парсеров (эндпоинт /api/v1/parser/health) ---
+
+export interface ParserHealthUniversity {
+  code: string;
+  name: string;
+  last_success_at: string | null;
+  last_run_status: string | null;
+  age_hours: number | null;
+  is_stale: boolean;
+  records_found: number | null;
+  records_saved: number | null;
+  last_error: string | null;
+}
+
+export interface ParserHealthResponse {
+  status: "ok" | "stale";
+  generated_at: string;
+  universities: ParserHealthUniversity[];
+}

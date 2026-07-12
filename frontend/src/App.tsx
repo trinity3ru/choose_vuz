@@ -1,13 +1,14 @@
 // Главный экран: фильтры слева, гистограмма и вывод справа.
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { fetchUniversities } from "./api";
+import { ApiUnavailableError, fetchUniversities } from "./api";
 import { Filters } from "./components/Filters";
 import { HistogramChart } from "./components/HistogramChart";
 import { Summary } from "./components/Summary";
 import { useApplicantData } from "./hooks/useApplicantData";
-import type { UniversityInfo } from "./types";
+import { useParserHealth } from "./hooks/useParserHealth";
+import type { ParserHealthUniversity, UniversityInfo } from "./types";
 import {
   availablePriorities,
   averageScore,
@@ -28,9 +29,18 @@ function formatSnapshotDate(iso: string): string {
   });
 }
 
+/** Текст свежести данных вуза: «обновлено N ч назад» / предупреждение. */
+function freshnessLabel(health: ParserHealthUniversity): string {
+  if (health.age_hours === null) return "Данные ещё не собирались";
+  if (health.age_hours < 1) return "Обновлено меньше часа назад";
+  const hours = Math.round(health.age_hours);
+  return `Обновлено ${hours} ч назад`;
+}
+
 export default function App() {
   const [universities, setUniversities] = useState<UniversityInfo[]>([]);
   const [uniError, setUniError] = useState<string | null>(null);
+  const [uniUnavailable, setUniUnavailable] = useState(false);
   const [uniLoading, setUniLoading] = useState(true);
 
   const [selectedUniversity, setSelectedUniversity] = useState<string | null>(
@@ -42,29 +52,46 @@ export default function App() {
   );
   const [userScore, setUserScore] = useState<number | null>(null);
 
-  // Загрузка списка вузов при старте.
-  useEffect(() => {
+  const health = useParserHealth();
+
+  // Загрузка списка вузов (и повтор по кнопке «Повторить»).
+  const loadUniversities = useCallback(() => {
+    setUniLoading(true);
+    setUniError(null);
+    setUniUnavailable(false);
     fetchUniversities()
       .then((list) => {
         setUniversities(list);
         setUniLoading(false);
         if (list.length > 0) {
-          setSelectedUniversity(list[0].code);
-          if (list[0].majors.length > 0) {
-            setSelectedMajor(list[0].majors[0].code);
-          }
+          setSelectedUniversity((prev) => prev ?? list[0].code);
+          setSelectedMajor((prev) => prev ?? list[0].majors[0]?.code ?? null);
         }
       })
       .catch((err: Error) => {
         setUniError(err.message);
+        setUniUnavailable(err instanceof ApiUnavailableError);
         setUniLoading(false);
       });
   }, []);
 
-  const { data, loading, error } = useApplicantData(
+  useEffect(() => {
+    loadUniversities();
+  }, [loadUniversities]);
+
+  function retryAll() {
+    loadUniversities();
+    health.reload();
+  }
+
+  const { data, loading, error, unavailable, retry } = useApplicantData(
     selectedUniversity,
     selectedMajor,
   );
+
+  const selectedHealth = selectedUniversity
+    ? health.byCode.get(selectedUniversity)
+    : undefined;
 
   const applicants = data?.applicants ?? [];
 
@@ -120,20 +147,50 @@ export default function App() {
       <header className="app-header">
         <div className="app-header-inner">
           <div>
-            <p className="eyebrow">СПбПУ · Бакалавриат 2026</p>
+            <p className="eyebrow">Конкурсные списки · Бакалавриат 2026</p>
             <h1>Оценка шансов поступления</h1>
           </div>
-          {data?.snapshot && (
-            <div className="snapshot-badge" title="Последний успешный снимок">
-              Данные на {formatSnapshotDate(data.snapshot.created_at)}
-            </div>
-          )}
+          <div className="badges">
+            {selectedHealth && (
+              <div
+                className={
+                  selectedHealth.is_stale
+                    ? "snapshot-badge badge-stale"
+                    : "snapshot-badge badge-fresh"
+                }
+                title={
+                  selectedHealth.is_stale
+                    ? "Данные вуза давно не обновлялись — цифры могут отставать от сайта"
+                    : "Данные вуза свежие"
+                }
+              >
+                {selectedHealth.is_stale ? "⚠ " : ""}
+                {freshnessLabel(selectedHealth)}
+              </div>
+            )}
+            {data?.snapshot && (
+              <div className="snapshot-badge" title="Последний успешный снимок">
+                Данные на {formatSnapshotDate(data.snapshot.created_at)}
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
       <main className="layout">
         {uniLoading ? (
           <div className="panel state-note">Загрузка списка направлений…</div>
+        ) : uniUnavailable ? (
+          <div className="panel state-note api-down">
+            <h2>API временно недоступно</h2>
+            <p>
+              Не получилось связаться с сервером. Обычно это ненадолго —
+              попробуйте ещё раз через минуту.
+            </p>
+            <button type="button" className="retry-btn" onClick={retryAll}>
+              Повторить
+            </button>
+          </div>
         ) : uniError ? (
           <div className="panel state-note state-error">
             Не удалось загрузить данные: {uniError}
@@ -161,6 +218,14 @@ export default function App() {
             <div className="content">
               {loading ? (
                 <div className="panel state-note">Загрузка заявлений…</div>
+              ) : unavailable ? (
+                <div className="panel state-note api-down">
+                  <h2>API временно недоступно</h2>
+                  <p>Не удалось загрузить заявления. Попробуйте ещё раз.</p>
+                  <button type="button" className="retry-btn" onClick={retry}>
+                    Повторить
+                  </button>
+                </div>
               ) : error ? (
                 <div className="panel state-note state-error">{error}</div>
               ) : data ? (

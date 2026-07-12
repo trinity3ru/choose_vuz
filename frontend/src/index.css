@@ -121,6 +121,53 @@ h2 {
   white-space: nowrap;
 }
 
+.badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Свежесть данных вуза (из /api/v1/parser/health). */
+.badge-fresh {
+  color: #1a7f4b;
+  border-color: rgba(26, 127, 75, 0.35);
+  background: rgba(26, 127, 75, 0.08);
+}
+
+.badge-stale {
+  color: #a15c07;
+  border-color: rgba(161, 92, 7, 0.35);
+  background: rgba(161, 92, 7, 0.1);
+}
+
+/* Экран «API временно недоступно» с кнопкой повтора. */
+.api-down h2 {
+  font-size: 17px;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.api-down p {
+  margin-bottom: 14px;
+}
+
+.retry-btn {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  cursor: pointer;
+}
+
+.retry-btn:hover {
+  filter: brightness(1.08);
+}
+
 /* --- Раскладка --- */
 .layout {
   max-width: 1180px;
