@@ -40,6 +40,8 @@ _REFERER = "https://pk.hse.ru/admissions/bak/BD/applicants"
 _EXPECTED_FILIAL = {
     "HSE_MSK": "Москва",
     "HSE_SPB": "Санкт-Петербург",
+    "HSE_NN": "Нижний Новгород",
+    "HSE_PERM": "Пермь",
 }
 
 # Размер страницы списка (API отдаёт Spring Page).

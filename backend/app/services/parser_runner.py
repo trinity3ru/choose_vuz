@@ -45,10 +45,12 @@ PARSER_REGISTRY: dict[str, type[BaseParser]] = {
     "KPFU": KpfuParser,
     "GUAP": GuapParser,
     "SPMI": SpmiParser,
-    # ВШЭ: два кампуса как два вуза, общий класс парсера (кампус
+    # ВШЭ: кампусы как отдельные вузы, общий класс парсера (кампус
     # проверяется по полю filial в заголовке группы).
     "HSE_MSK": HseParser,
     "HSE_SPB": HseParser,
+    "HSE_NN": HseParser,
+    "HSE_PERM": HseParser,
 }
 
 # Флаг «парсинг идёт». Приложение однопоточное (asyncio), поэтому простой

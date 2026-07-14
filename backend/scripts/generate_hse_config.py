@@ -37,6 +37,8 @@ HEADERS = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
 CAMPUSES = {
     "Москва": "HSE_MSK",
     "Санкт-Петербург": "HSE_SPB",
+    "Нижний Новгород": "HSE_NN",
+    "Пермь": "HSE_PERM",
 }
 
 PARAMS_BUDGET = {"study_form": "Очная", "finance_type": "Бюджетная основа"}
@@ -142,8 +144,18 @@ def main() -> int:
     for filial_name, uni_code in CAMPUSES.items():
         uni = by_code.get(uni_code)
         if uni is None:
-            print(f"ВНИМАНИЕ: вуза {uni_code} нет в config.json — пропуск")
-            continue
+            # Новый кампус: создаём запись вуза с нуля.
+            uni = {
+                "code": uni_code,
+                "name": f"НИУ «Высшая школа экономики» ({filial_name})",
+                "url": "https://pk.hse.ru/admissions/bak/BD/applicants",
+                "parser_type": "http",
+                "enabled": True,
+                "majors": [],
+            }
+            config["universities"].append(uni)
+            by_code[uni_code] = uni
+            print(f"{uni_code}: создан новый вуз ({filial_name})")
 
         # Существующие направления: external_id -> базовый код (без -К).
         taken_by_ext: dict[str, str] = {}
