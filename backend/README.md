@@ -342,6 +342,9 @@ copy .env.example .env
 8. commit + push
 9. VPS: git pull && docker compose build api worker && docker compose up -d api worker
 10. VPS: sudo bash scripts/install-timers.sh   ← ОБЯЗАТЕЛЬНО: новый вуз = новый ночной слот
+    и СРАЗУ ПРОВЕРИТЬ: systemctl list-timers 'university-parser@*' --no-pager
+    — новый код должен быть в списке (реальный инцидент: ВШЭ добавили без
+    переустановки таймеров и двое суток не замечали stale, пока не включён Telegram)
 11. VPS: enqueue <code> → /parser/health: success, is_stale=false
 ```
 
