@@ -260,6 +260,18 @@ export default function App() {
           </>
         )}
       </main>
+
+      <footer className="app-footer">
+        Сервис работает в тестовом режиме. Для добавления новых ВУЗов или по
+        другим вопросам напишите{" "}
+        <a
+          href="https://t.me/goldkuav"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          @goldkuav
+        </a>
+      </footer>
     </div>
   );
 }

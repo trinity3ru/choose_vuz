@@ -417,3 +417,22 @@ h2 {
   text-align: center;
   padding: 40px 0;
 }
+
+/* --- Футер --- */
+.app-footer {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 8px 24px 28px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.app-footer a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.app-footer a:hover {
+  text-decoration: underline;
+}
