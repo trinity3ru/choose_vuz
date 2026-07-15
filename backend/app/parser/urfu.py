@@ -13,8 +13,13 @@ JS, но данные лежат в статических HTML-файлах р�
 не нужен — httpx + разбор HTML в urfu_mapping. Файл кэшируется по номеру института,
 чтобы несколько направлений одного института скачивали его один раз (как у Горного).
 
-external_id направления в конфиге = "NNN::<Направление (образовательная программа)>",
-где NNN — номер института. Направление в пределах института уникально.
+Под одним кодом направления у УрФУ бывает несколько образовательных программ
+(и в разных институтах). Модель проекта — одно направление = один код на вуз,
+поэтому программы одного кода агрегируются в один список (см. merge_programs).
+
+external_id направления в конфиге = список номеров институтов через запятую,
+где встречается этот код, напр. "003,017". Парсер качает эти институты и
+собирает все списки нужного кода.
 """
 
 import logging
@@ -25,7 +30,8 @@ from app.parser.http_base import HttpParser, raise_for_status
 from app.parser.urfu_mapping import (
     STUDY_FORM_NAMES,
     ParsedList,
-    normalize_direction,
+    code_of,
+    merge_programs,
     parse_institute_lists,
 )
 from app.schemas.config_schema import MajorConfig
@@ -37,8 +43,8 @@ logger = logging.getLogger(__name__)
 FILE_URL = "https://urfu.ru/api/entrants/files/rating-0002-{institute:03d}-01-1.html"
 _REFERER = "https://urfu.ru/ru/alpha/ranzhirovannye-spiski-postupajushchikh/"
 
-# Разделитель в external_id: "003::09.03.01 Информатика ... (Алгоритмы ИИ)".
-_EXTERNAL_ID_SEP = "::"
+# Разделитель институтов в external_id: "003,017".
+_INSTITUTE_SEP = ","
 
 # Файлы рейтингов тяжёлые (единицы–десятки МБ) — увеличенный таймаут.
 _TIMEOUT_MS = 180_000
@@ -80,24 +86,26 @@ class UrfuParser(HttpParser):
     async def _parse_major(
         self, client: httpx.AsyncClient, major: MajorConfig, context: _Cache
     ) -> MajorResult:
-        institute, direction = self._split_external_id(major)
+        institutes = self._institutes_of(major)
         study_form = STUDY_FORM_NAMES.get(
             major.params.study_form, major.params.study_form
         )
 
-        if institute not in context:
-            context[institute] = await self._load_institute(client, institute, study_form)
+        # Собрать все программы этого кода из указанных институтов.
+        programs: list[ParsedList] = []
+        for institute in institutes:
+            if institute not in context:
+                context[institute] = await self._load_institute(client, institute, study_form)
+            for direction, places_applicants in context[institute].items():
+                if code_of(direction) == major.code:
+                    programs.append(places_applicants)
 
-        lists = context[institute]
-        places_applicants = lists.get(direction)
-        if places_applicants is None:
-            available = ", ".join(sorted(lists)[:5])
+        if not programs:
             raise RuntimeError(
-                f"направление {direction!r} не найдено в институте {institute} "
-                f"(есть, напр.: {available})"
+                f"направление {major.code} не найдено в институтах {institutes}"
             )
 
-        places, applicants = places_applicants
+        places, applicants = merge_programs(programs)
         summary = MajorSummary(
             places=places,
             applications=len(applicants),
@@ -109,17 +117,17 @@ class UrfuParser(HttpParser):
             name=major.name,
             internal_id=None,
             summary=summary,
-            applicants=list(applicants),
+            applicants=applicants,
         )
 
     @staticmethod
-    def _split_external_id(major: MajorConfig) -> tuple[str, str]:
-        """Разобрать external_id на номер института и строку направления."""
+    def _institutes_of(major: MajorConfig) -> list[str]:
+        """Разобрать external_id на список номеров институтов ("003,017")."""
         raw = (major.external_id or "").strip()
-        if _EXTERNAL_ID_SEP not in raw:
+        institutes = [p.strip() for p in raw.split(_INSTITUTE_SEP) if p.strip()]
+        if not institutes:
             raise RuntimeError(
-                f"external_id направления {major.code} должен быть "
-                f"'NNN{_EXTERNAL_ID_SEP}<направление>', получено: {raw!r}"
+                f"external_id направления {major.code} должен содержать номера "
+                f"институтов через запятую, получено: {raw!r}"
             )
-        institute, direction = raw.split(_EXTERNAL_ID_SEP, 1)
-        return institute.strip(), normalize_direction(direction)
+        return institutes

@@ -128,6 +128,43 @@ def _parse_meta(table_html: str) -> dict[str, str]:
 ParsedList = tuple[int | None, list[ApplicantRow]]
 
 
+def code_of(direction: str) -> str:
+    """Код направления — первый токен строки «Направление ...» (напр. 09.03.01)."""
+    return direction.split(" ", 1)[0]
+
+
+def _is_better(candidate: ApplicantRow, current: ApplicantRow) -> bool:
+    """
+    Какую из двух строк одного абитуриента оставить при дедупликации.
+
+    Приоритет: наличие согласия, затем более высокая сумма конкурсных баллов.
+    """
+    if candidate.has_agreement != current.has_agreement:
+        return candidate.has_agreement
+    return (candidate.total_score or -1) > (current.total_score or -1)
+
+
+def merge_programs(programs: list[ParsedList]) -> ParsedList:
+    """
+    Объединить несколько программ одного направления в один список.
+
+    У УрФУ под одним кодом направления бывает несколько образовательных программ
+    (каждая — отдельный конкурс). Для направления-уровня агрегируем: план приёма
+    суммируем, абитуриентов схлопываем по коду (УКП) — один человек, подавший на
+    несколько программ одного направления, считается один раз (оставляем лучшую строку).
+    """
+    total_places: int | None = None
+    best: dict[str, ApplicantRow] = {}
+    for places, applicants in programs:
+        if places is not None:
+            total_places = (total_places or 0) + places
+        for row in applicants:
+            prev = best.get(row.applicant_code)
+            if prev is None or _is_better(row, prev):
+                best[row.applicant_code] = row
+    return total_places, list(best.values())
+
+
 def parse_institute_lists(html_text: str, study_form: str = "Очная") -> dict[str, ParsedList]:
     """
     Разобрать HTML института в словарь {нормализованное направление: (места, строки)}.

@@ -707,12 +707,13 @@ def _urfu_data(rows: str) -> str:
     return f"<table>{header}{rows}</table>"
 
 
-_URFU_DIRECTION = "09.03.01 Информатика и вычислительная техника (Алгоритмы искусственного интеллекта)"
+_URFU_PROG_A = "09.03.01 Информатика и вычислительная техника (Алгоритмы искусственного интеллекта)"
+_URFU_PROG_B = "09.03.01 Информатика и вычислительная техника (Информатика и вычислительная техника)"
 
 
 def _urfu_html() -> str:
-    # Основной бюджетный конкурс: обычная строка + БВИ-строка.
-    main_rows = (
+    # Программа A кода 09.03.01: обычная строка (с согласием) + БВИ-строка.
+    prog_a_rows = (
         "<tr><td>1</td><td>1502041</td><td>Да</td><td>1</td>"
         "<td>Математика 99 (ЕГЭ) Физика 100 (ЕГЭ) Русский язык 91 (ЕГЭ)</td>"
         "<td></td><td>10</td><td></td><td>300</td><td></td></tr>"
@@ -720,38 +721,50 @@ def _urfu_html() -> str:
         "<td>Без проведения вступительных испытаний</td>"
         "<td>Победитель олимпиады</td><td></td><td></td><td></td><td>Да</td></tr>"
     )
-    # Особая квота того же направления — должна быть отфильтрована.
+    # Программа B того же кода 09.03.01: тот же абитуриент 1502041 (без согласия,
+    # ниже балл — схлопнётся в пользу строки из A) + новый абитуриент.
+    prog_b_rows = (
+        "<tr><td>1</td><td>1502041</td><td></td><td>2</td>"
+        "<td>Математика 80 (ЕГЭ) Физика 80 (ЕГЭ) Русский язык 90 (ЕГЭ)</td>"
+        "<td></td><td>0</td><td></td><td>250</td><td></td></tr>"
+        "<tr><td>2</td><td>2223334</td><td></td><td>1</td>"
+        "<td>Математика 90 (ЕГЭ) Физика 90 (ЕГЭ) Русский язык 90 (ЕГЭ)</td>"
+        "<td></td><td>0</td><td></td><td>270</td><td></td></tr>"
+    )
+    # Особая квота того же кода — должна быть отфильтрована.
     quota_rows = (
         "<tr><td>1</td><td>9998887</td><td>Да</td><td>1</td>"
         "<td>Математика 70 (ЕГЭ) Физика 70 (ЕГЭ) Русский язык 70 (ЕГЭ)</td>"
         "<td></td><td>0</td><td></td><td>210</td><td></td></tr>"
     )
-    # Другое направление — не должно попасть в наш список.
+    # Другой код — не должен попасть в 09.03.01.
     other_rows = (
         "<tr><td>1</td><td>7777777</td><td></td><td>2</td>"
         "<td>Математика 60 (ЕГЭ)</td><td></td><td>0</td><td></td><td>60</td><td></td></tr>"
     )
     return (
         "<html><body>"
-        + _urfu_meta("Основные места в рамках КЦП", _URFU_DIRECTION, "50")
-        + _urfu_data(main_rows)
-        + _urfu_meta("Особая квота", _URFU_DIRECTION, "5")
+        + _urfu_meta("Основные места в рамках КЦП", _URFU_PROG_A, "50")
+        + _urfu_data(prog_a_rows)
+        + _urfu_meta("Особая квота", _URFU_PROG_A, "5")
         + _urfu_data(quota_rows)
+        + _urfu_meta("Основные места в рамках КЦП", _URFU_PROG_B, "40")
+        + _urfu_data(prog_b_rows)
         + _urfu_meta(
             "Основные места в рамках КЦП",
             "09.03.03 Прикладная информатика (Прикладная информатика)",
-            "40",
+            "30",
         )
         + _urfu_data(other_rows)
         + "</body></html>"
     )
 
 
-async def test_urfu_parser():
+async def test_urfu_parser_aggregates_programs_of_one_code():
     uni = make_university(
         "URFU",
         "https://urfu.ru/ru/alpha/ranzhirovannye-spiski-postupajushchikh/",
-        [make_major("09.03.01", external_id=f"003::{_URFU_DIRECTION}")],
+        [make_major("09.03.01", external_id="003")],
     )
     parser = UrfuParser(uni, request_delay_seconds=0)
 
@@ -765,30 +778,31 @@ async def test_urfu_parser():
 
     assert result.status == "success"
     major = result.majors[0]
-    assert major.summary.places == 50
-    # Особая квота и чужое направление отфильтрованы -> только 2 строки.
-    assert major.summary.applications == 2
+    # План приёма суммируется по программам кода: 50 + 40.
+    assert major.summary.places == 90
+    # Квота и чужой код отфильтрованы; 1502041 из двух программ схлопнут ->
+    # 3 уникальных: 1502041, 1388009, 2223334.
+    assert major.summary.applications == 3
     assert major.summary.agreements == 1
-    first = major.applicants[0]
-    assert first.applicant_code == "1502041"
-    assert first.total_score == 300
-    assert first.exam_score == 290  # 99 + 100 + 91
-    assert first.achievement_score == 10
-    assert first.has_agreement is True
-    assert first.is_bvi is False
-    # Вторая строка — БВИ (без вступительных испытаний), с преимущественным правом.
-    second = major.applicants[1]
-    assert second.is_bvi is True
-    assert second.exam_score is None
-    assert second.total_score is None
-    assert second.preferential_right == "Да"
+    by_code = {a.applicant_code: a for a in major.applicants}
+    assert set(by_code) == {"1502041", "1388009", "2223334"}
+    # При дедупликации оставлена строка с согласием (из программы A, балл 300).
+    kept = by_code["1502041"]
+    assert kept.has_agreement is True
+    assert kept.total_score == 300
+    assert kept.exam_score == 290  # 99 + 100 + 91
+    # БВИ-строка сохранена корректно.
+    bvi = by_code["1388009"]
+    assert bvi.is_bvi is True
+    assert bvi.total_score is None
+    assert bvi.preferential_right == "Да"
 
 
 async def test_urfu_parser_direction_not_found():
     uni = make_university(
         "URFU",
         "https://urfu.ru/ru/alpha/ranzhirovannye-spiski-postupajushchikh/",
-        [make_major("09.03.01", external_id="003::09.03.01 Несуществующая программа")],
+        [make_major("27.03.04", external_id="003")],  # кода нет в фикстуре
     )
     parser = UrfuParser(uni, request_delay_seconds=0)
 
