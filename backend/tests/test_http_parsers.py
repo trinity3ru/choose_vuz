@@ -25,6 +25,7 @@ from app.parser.spbau import SpbauParser
 from app.parser.spbgu import SpbguParser
 from app.parser.spmi import SpmiParser
 from app.parser.tltsu import TltsuParser
+from app.parser.urfu import UrfuParser
 
 from .conftest import make_major, make_university, mock_client
 
@@ -677,6 +678,130 @@ async def test_spmi_parser_with_cache():
     assert first.applicant_code == "8889990"
     assert first.total_score == 255
     assert first.exam_score == 245
+
+
+# ----------------------------------------------------------------- УрФУ --
+
+
+def _urfu_meta(kind: str, direction: str, plan: str, form: str = "Очная") -> str:
+    return (
+        "<table>"
+        f"<tr><td>Вид конкурса</td><td>{kind}</td></tr>"
+        "<tr><td>Институт (филиал)</td><td>Радиоэлектроники и информационных технологий - РТФ</td></tr>"
+        f"<tr><td>Направление (образовательная программа)</td><td>{direction}</td></tr>"
+        "<tr><td>Уровень ВО</td><td>Бакалавриат</td></tr>"
+        f"<tr><td>Форма обучения</td><td>{form}</td></tr>"
+        f"<tr><td>План приема</td><td>{plan}</td></tr>"
+        "</table>"
+    )
+
+
+def _urfu_data(rows: str) -> str:
+    header = (
+        "<tr><th>№</th><th>Код поступающего (УКП)</th><th>Согласие на зачисление</th>"
+        "<th>Приоритет</th><th>Вступительные испытания по предметам</th>"
+        "<th>Основание приема БВИ</th><th>Общие инд. достижения</th>"
+        "<th>Целевые инд. достижения</th><th>Сумма конкурсных баллов</th>"
+        "<th>Преимущественное право</th></tr>"
+    )
+    return f"<table>{header}{rows}</table>"
+
+
+_URFU_DIRECTION = "09.03.01 Информатика и вычислительная техника (Алгоритмы искусственного интеллекта)"
+
+
+def _urfu_html() -> str:
+    # Основной бюджетный конкурс: обычная строка + БВИ-строка.
+    main_rows = (
+        "<tr><td>1</td><td>1502041</td><td>Да</td><td>1</td>"
+        "<td>Математика 99 (ЕГЭ) Физика 100 (ЕГЭ) Русский язык 91 (ЕГЭ)</td>"
+        "<td></td><td>10</td><td></td><td>300</td><td></td></tr>"
+        "<tr><td>2</td><td>1388009</td><td></td><td>3</td>"
+        "<td>Без проведения вступительных испытаний</td>"
+        "<td>Победитель олимпиады</td><td></td><td></td><td></td><td>Да</td></tr>"
+    )
+    # Особая квота того же направления — должна быть отфильтрована.
+    quota_rows = (
+        "<tr><td>1</td><td>9998887</td><td>Да</td><td>1</td>"
+        "<td>Математика 70 (ЕГЭ) Физика 70 (ЕГЭ) Русский язык 70 (ЕГЭ)</td>"
+        "<td></td><td>0</td><td></td><td>210</td><td></td></tr>"
+    )
+    # Другое направление — не должно попасть в наш список.
+    other_rows = (
+        "<tr><td>1</td><td>7777777</td><td></td><td>2</td>"
+        "<td>Математика 60 (ЕГЭ)</td><td></td><td>0</td><td></td><td>60</td><td></td></tr>"
+    )
+    return (
+        "<html><body>"
+        + _urfu_meta("Основные места в рамках КЦП", _URFU_DIRECTION, "50")
+        + _urfu_data(main_rows)
+        + _urfu_meta("Особая квота", _URFU_DIRECTION, "5")
+        + _urfu_data(quota_rows)
+        + _urfu_meta(
+            "Основные места в рамках КЦП",
+            "09.03.03 Прикладная информатика (Прикладная информатика)",
+            "40",
+        )
+        + _urfu_data(other_rows)
+        + "</body></html>"
+    )
+
+
+async def test_urfu_parser():
+    uni = make_university(
+        "URFU",
+        "https://urfu.ru/ru/alpha/ranzhirovannye-spiski-postupajushchikh/",
+        [make_major("09.03.01", external_id=f"003::{_URFU_DIRECTION}")],
+    )
+    parser = UrfuParser(uni, request_delay_seconds=0)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path.endswith("rating-0002-003-01-1.html")
+        assert "urfu.ru" in request.headers["Referer"]
+        return httpx.Response(200, text=_urfu_html())
+
+    mock_client(parser, handler)
+    result = await parser.parse()
+
+    assert result.status == "success"
+    major = result.majors[0]
+    assert major.summary.places == 50
+    # Особая квота и чужое направление отфильтрованы -> только 2 строки.
+    assert major.summary.applications == 2
+    assert major.summary.agreements == 1
+    first = major.applicants[0]
+    assert first.applicant_code == "1502041"
+    assert first.total_score == 300
+    assert first.exam_score == 290  # 99 + 100 + 91
+    assert first.achievement_score == 10
+    assert first.has_agreement is True
+    assert first.is_bvi is False
+    # Вторая строка — БВИ (без вступительных испытаний), с преимущественным правом.
+    second = major.applicants[1]
+    assert second.is_bvi is True
+    assert second.exam_score is None
+    assert second.total_score is None
+    assert second.preferential_right == "Да"
+
+
+async def test_urfu_parser_direction_not_found():
+    uni = make_university(
+        "URFU",
+        "https://urfu.ru/ru/alpha/ranzhirovannye-spiski-postupajushchikh/",
+        [make_major("09.03.01", external_id="003::09.03.01 Несуществующая программа")],
+    )
+    parser = UrfuParser(uni, request_delay_seconds=0)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text=_urfu_html())
+
+    mock_client(parser, handler)
+    result = await parser.parse()
+
+    # Направление не найдено -> запуск без данных -> failed.
+    assert result.status == "failed"
+    assert not result.majors
+    assert result.errors
 
 
 # ------------------------------------------------------------------ ВШЭ --

@@ -25,6 +25,7 @@ from app.parser.spbstu import SpbstuParser
 from app.parser.spmi import SpmiParser
 from app.parser.sut import SutParser
 from app.parser.tltsu import TltsuParser
+from app.parser.urfu import UrfuParser
 from app.services.storage import save_parse_result
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,7 @@ PARSER_REGISTRY: dict[str, type[BaseParser]] = {
     "KPFU": KpfuParser,
     "GUAP": GuapParser,
     "SPMI": SpmiParser,
+    "URFU": UrfuParser,
     # ВШЭ: кампусы как отдельные вузы, общий класс парсера (кампус
     # проверяется по полю filial в заголовке группы).
     "HSE_MSK": HseParser,
