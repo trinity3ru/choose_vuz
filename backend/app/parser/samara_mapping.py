@@ -65,8 +65,8 @@ def row_to_applicant(cells: list[str]) -> ApplicantRow:
 
     Индексация:
     - слева:  cells[1] — код поступающего, cells[2] — сумма баллов;
-    - справа: cells[-6] — баллы за ИД, cells[-5] — согласие,
-              cells[-4] — приоритет, cells[-3] — состояние,
+    - справа: cells[-6] — баллы за ИД, cells[-5] — приоритет,
+              cells[-4] — согласие, cells[-3] — состояние,
               cells[-2] — рассматривается к зачислению (не используем),
               cells[-1] — преимущ. право / основание БВИ.
     Такой подход не зависит от числа колонок-предметов посередине.
@@ -83,8 +83,8 @@ def row_to_applicant(cells: list[str]) -> ApplicantRow:
         achievement_score=to_int(cells[-6]),
         target_achievement_score=None,
         preferential_right=pref_text if pref_text not in {"", "-", "—"} else None,
-        priority=to_int(cells[-4]),
-        has_agreement=_has_agreement(cells[-5]),
+        priority=to_int(cells[-5]),
+        has_agreement=_has_agreement(cells[-4]),
         review_status=status_text or None,
     )
 
