@@ -545,42 +545,64 @@
       "parser_type": "http",
       "enabled": true,
       "majors": [
-        {
-          "code": "03.03.01",
-          "name": "Прикладные математика и физика",
-          "params": {
-            "study_form": "Очная",
-            "finance_type": "Бюджетная основа"
-          },
-          "external_id": "10"
-        },
-        {
-          "code": "01.03.02",
-          "name": "Прикладная математика и информатика",
-          "params": {
-            "study_form": "Очная",
-            "finance_type": "Бюджетная основа"
-          },
-          "external_id": "2"
-        },
-        {
-          "code": "03.03.02",
-          "name": "Физика",
-          "params": {
-            "study_form": "Очная",
-            "finance_type": "Бюджетная основа"
-          },
-          "external_id": "11"
-        },
-        {
-          "code": "02.03.01",
-          "name": "Математика и компьютерные науки",
-          "params": {
-            "study_form": "Очная",
-            "finance_type": "Бюджетная основа"
-          },
-          "external_id": "7"
-        }
+        {"code": "01.03.02", "name": "Прикладная математика и информатика", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "2"},
+        {"code": "01.03.03", "name": "Механика и математическое моделирование", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "3"},
+        {"code": "01.05.01", "name": "Фундаментальные математика и механика", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "5"},
+        {"code": "02.03.01", "name": "Математика и компьютерные науки", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "7"},
+        {"code": "02.03.02", "name": "Фундаментальная информатика и информационные технологии", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "8"},
+        {"code": "02.03.03", "name": "Математическое обеспечение и администрирование информационных систем", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "9"},
+        {"code": "03.03.01", "name": "Прикладные математика и физика", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "10"},
+        {"code": "03.03.02", "name": "Физика", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "11"},
+        {"code": "04.03.01", "name": "Химия", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "12"},
+        {"code": "04.05.01", "name": "Фундаментальная и прикладная химия", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "13"},
+        {"code": "06.03.01", "name": "Биология", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "14"},
+        {"code": "09.03.01", "name": "Информатика и вычислительная техника", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "15"},
+        {"code": "10.03.01", "name": "Информационная безопасность", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "17"},
+        {"code": "10.05.01", "name": "Компьютерная безопасность", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "19"},
+        {"code": "10.05.03", "name": "Информационная безопасность автоматизированных систем", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "21"},
+        {"code": "11.03.03", "name": "Конструирование и технология электронных средств", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "23"},
+        {"code": "11.03.04", "name": "Электроника и наноэлектроника", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "24"},
+        {"code": "11.05.01", "name": "Радиоэлектронные системы и комплексы", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "26"},
+        {"code": "12.03.03", "name": "Фотоника и оптоинформатика", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "27"},
+        {"code": "12.03.04", "name": "Биотехнические системы и технологии", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "28"},
+        {"code": "12.03.05", "name": "Лазерная техника и лазерные технологии", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "29"},
+        {"code": "13.03.03", "name": "Энергетическое машиностроение", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "30"},
+        {"code": "15.03.01", "name": "Машиностроение", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "31"},
+        {"code": "15.03.04", "name": "Автоматизация технологических процессов и производств", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "33"},
+        {"code": "15.03.05", "name": "Конструкторско-технологическое обеспечение машиностроительных производств", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "34"},
+        {"code": "22.03.02", "name": "Металлургия", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "37"},
+        {"code": "23.03.01", "name": "Технология транспортных процессов", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "38"},
+        {"code": "24.03.01", "name": "Ракетные комплексы и космонавтика", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "31"},
+        {"code": "24.03.04", "name": "Авиастроение", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "42"},
+        {"code": "24.03.05", "name": "Двигатели летательных аппаратов", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "43"},
+        {"code": "24.05.01", "name": "Проектирование, производство и эксплуатация ракет и ракетно-космических комплексов", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "44"},
+        {"code": "24.05.02", "name": "Проектирование авиационных и ракетных двигателей", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "45"},
+        {"code": "24.05.07", "name": "Самолето- и вертолетостроение", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "46"},
+        {"code": "25.03.00", "name": "Аэронавигация и эксплуатация авиационной и ракетно-космической техники", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "47"},
+        {"code": "27.03.02", "name": "Управление качеством", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "49"},
+        {"code": "28.03.02", "name": "Наноинженерия", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "50"},
+        {"code": "37.03.01", "name": "Психология", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "52"},
+        {"code": "38.03.01", "name": "Экономика", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "43"},
+        {"code": "38.03.02", "name": "Менеджмент", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "54"},
+        {"code": "38.03.03", "name": "Управление персоналом", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "55"},
+        {"code": "38.03.04", "name": "Государственное и муниципальное управление", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "56"},
+        {"code": "38.03.05", "name": "Бизнес-информатика", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "57"},
+        {"code": "38.05.01", "name": "Экономическая безопасность", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "58"},
+        {"code": "39.03.01", "name": "Социология", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "60"},
+        {"code": "39.03.02", "name": "Социальная работа", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "61"},
+        {"code": "39.03.03", "name": "Организация работы с молодежью", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "62"},
+        {"code": "40.03.01", "name": "Юриспруденция", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "52"},
+        {"code": "41.03.05", "name": "Международные отношения", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "66"},
+        {"code": "42.03.01", "name": "Реклама и связи с общественностью", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "68"},
+        {"code": "42.03.02", "name": "Журналистика", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "69"},
+        {"code": "42.03.04", "name": "Телевидение", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "71"},
+        {"code": "44.03.01", "name": "Педагогическое образование", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "73"},
+        {"code": "44.03.02", "name": "Психолого-педагогическое образование", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "74"},
+        {"code": "44.03.05", "name": "Педагогическое образование (с двумя профилями подготовки)", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "76"},
+        {"code": "45.03.01", "name": "Филология", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "78"},
+        {"code": "45.03.02", "name": "Лингвистика", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "80"},
+        {"code": "46.03.01", "name": "История", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "82"},
+        {"code": "46.03.02", "name": "Документоведение и архивоведение", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "85"}
       ]
     },
     {
