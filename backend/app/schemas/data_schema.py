@@ -52,3 +52,29 @@ class ApplicantsResponse(BaseModel):
     major: MajorOut
     stats: MajorStatsOut | None
     applicants: list[ApplicantOut]
+
+
+class MajorStatsRow(BaseModel):
+    """
+    Агрегат по одному направлению для сводной выдачи.
+
+    Без списка заявлений: только числа, пригодные для карточек и сортировок.
+    """
+
+    university_code: str
+    university_name: str
+    major_code: str
+    major_name: str
+    places: int | None
+    applications: int | None
+    agreements: int | None
+    list_formed_at: str | None
+    cutoff_score: int | None
+    snapshot_created_at: datetime
+    snapshot_status: str
+
+
+class StatsResponse(BaseModel):
+    """Сводка по всем направлениям, по которым есть пригодные данные."""
+
+    items: list[MajorStatsRow]

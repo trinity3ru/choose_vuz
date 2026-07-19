@@ -15,7 +15,7 @@ API-эндпоинты выдачи данных для фронтенда.
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
@@ -25,7 +25,9 @@ from app.schemas.data_schema import (
     ApplicantsResponse,
     MajorOut,
     MajorStatsOut,
+    MajorStatsRow,
     SnapshotOut,
+    StatsResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -136,6 +138,165 @@ async def get_applicants(
             )
             for a in applicant_rows
         ],
+    )
+
+
+@router.get("/stats", response_model=StatsResponse)
+async def get_stats(
+    university_code: str | None = Query(
+        None, description="Необязательный фильтр по коду вуза, напр. SPBSTU"
+    ),
+    session: AsyncSession = Depends(get_session),
+) -> StatsResponse:
+    """
+    Вернуть агрегаты по всем направлениям сразу: места, заявления, согласия
+    и оценочную отсечку.
+
+    Нужен потребителям, которым требуется картина целиком, — запрашивать
+    /applicants по каждому направлению отдельно слишком дорого (в ответе
+    полный список заявлений).
+
+    Отсечка считается так же, как на фронтенде (`cutoffScore` в
+    frontend/src/utils/analysis.ts): заявления ранжируются по убыванию балла,
+    берётся балл на последнем месте в пределах КЦП. Если заявлений меньше,
+    чем мест, — минимальный балл в списке. Без КЦП отсечка не определена.
+    """
+    # Пары «направление -> снимок» без дублей: в applicants на каждую пару
+    # приходится много строк.
+    pairs = (
+        select(
+            Applicant.major_id.label("major_id"),
+            ParseSnapshot.id.label("snapshot_id"),
+            ParseSnapshot.created_at.label("created_at"),
+            ParseSnapshot.status.label("status"),
+        )
+        .join(ParseSnapshot, ParseSnapshot.id == Applicant.snapshot_id)
+        .where(ParseSnapshot.status.in_(_USABLE_SNAPSHOT_STATUSES))
+        .distinct()
+        .subquery()
+    )
+
+    ranked_snapshots = select(
+        pairs.c.major_id,
+        pairs.c.snapshot_id,
+        pairs.c.created_at,
+        pairs.c.status,
+        func.row_number()
+        .over(partition_by=pairs.c.major_id, order_by=pairs.c.created_at.desc())
+        .label("rn"),
+    ).subquery()
+
+    # Последний пригодный снимок каждого направления.
+    latest = (
+        select(ranked_snapshots)
+        .where(ranked_snapshots.c.rn == 1)
+        .subquery()
+    )
+
+    # Сводка направления из того же снимка.
+    stats_sq = (
+        select(
+            MajorStats.major_id.label("major_id"),
+            MajorStats.places.label("places"),
+            MajorStats.applications.label("applications"),
+            MajorStats.agreements.label("agreements"),
+            MajorStats.list_formed_at.label("list_formed_at"),
+        )
+        .join(
+            latest,
+            and_(
+                latest.c.major_id == MajorStats.major_id,
+                latest.c.snapshot_id == MajorStats.snapshot_id,
+            ),
+        )
+        .subquery()
+    )
+
+    # Баллы этого же снимка, ранжированные по убыванию, плюс размер списка.
+    ranked_scores = (
+        select(
+            Applicant.major_id.label("major_id"),
+            Applicant.total_score.label("total_score"),
+            func.row_number()
+            .over(
+                partition_by=Applicant.major_id,
+                order_by=Applicant.total_score.desc(),
+            )
+            .label("rn"),
+            func.count()
+            .over(partition_by=Applicant.major_id)
+            .label("cnt"),
+        )
+        .join(
+            latest,
+            and_(
+                latest.c.major_id == Applicant.major_id,
+                latest.c.snapshot_id == Applicant.snapshot_id,
+            ),
+        )
+        .where(Applicant.total_score.is_not(None))
+        .subquery()
+    )
+
+    # Балл на последнем месте в пределах КЦП: rn == min(places, длина списка).
+    cutoff_sq = (
+        select(
+            ranked_scores.c.major_id.label("major_id"),
+            ranked_scores.c.total_score.label("cutoff_score"),
+        )
+        .join(stats_sq, stats_sq.c.major_id == ranked_scores.c.major_id)
+        .where(
+            stats_sq.c.places.is_not(None),
+            stats_sq.c.places > 0,
+            ranked_scores.c.rn
+            == func.least(stats_sq.c.places, ranked_scores.c.cnt),
+        )
+        .subquery()
+    )
+
+    stmt = (
+        select(
+            University.code,
+            University.name,
+            Major.code,
+            Major.name,
+            stats_sq.c.places,
+            stats_sq.c.applications,
+            stats_sq.c.agreements,
+            stats_sq.c.list_formed_at,
+            cutoff_sq.c.cutoff_score,
+            latest.c.created_at,
+            latest.c.status,
+        )
+        .select_from(latest)
+        .join(Major, Major.id == latest.c.major_id)
+        .join(University, University.id == Major.university_id)
+        .outerjoin(stats_sq, stats_sq.c.major_id == latest.c.major_id)
+        .outerjoin(cutoff_sq, cutoff_sq.c.major_id == latest.c.major_id)
+        .order_by(University.name, Major.code)
+    )
+    if university_code is not None:
+        stmt = stmt.where(University.code == university_code)
+
+    rows = (await session.execute(stmt)).all()
+
+    return StatsResponse(
+        items=[
+            MajorStatsRow(
+                university_code=row[0],
+                university_name=row[1],
+                major_code=row[2],
+                major_name=row[3],
+                places=row[4],
+                applications=row[5],
+                agreements=row[6],
+                list_formed_at=row[7],
+                cutoff_score=row[8],
+                snapshot_created_at=row[9],
+                snapshot_status=row[10],
+            )
+            for row in rows
+        ]
     )
 
 
