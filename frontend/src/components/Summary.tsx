@@ -8,6 +8,8 @@ interface Props {
   userScore: number | null;
   userRank: number | null;
   totalApplicants: number;
+  // Сколько заявлений с согласием на зачисление (без учёта фильтра согласия).
+  agreementApplicants: number;
   stats: MajorStats | null;
 }
 
@@ -79,6 +81,7 @@ export function Summary({
   userScore,
   userRank,
   totalApplicants,
+  agreementApplicants,
   stats,
 }: Props) {
   const verdict = buildVerdict(userScore, averageScore, cutoffScore);
@@ -119,6 +122,11 @@ export function Summary({
         <Tile
           label="Конкурс"
           value={competition !== null ? `${competition} чел/место` : "—"}
+        />
+        <Tile
+          label="С согласием"
+          value={String(agreementApplicants)}
+          accent="#3b82f6"
         />
       </div>
 

@@ -158,6 +158,11 @@ class SpbstuParser(BaseParser):
         raw = await list_resp.json()
         applicants = [row_to_applicant(item) for item in raw.get("results", [])]
 
+        # Поле count_agreement в сводке сайта не заполняется (всегда 0),
+        # поэтому согласия считаем по строкам списка — как в остальных вузах.
+        if summary is not None:
+            summary.agreements = sum(1 for a in applicants if a.has_agreement)
+
         return MajorResult(
             code=major.code,
             name=major.name,

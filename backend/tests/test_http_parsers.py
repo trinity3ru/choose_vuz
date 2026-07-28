@@ -111,13 +111,17 @@ async def test_itmo_parser():
 
 
 def _samara_html() -> str:
+    # Порядок колонок справа как на живой странице: ИД | Приоритет | Согласие |
+    # Состояние | Рассматривается к зачислению | Преимущ. право.
     row1 = (
         "<tr><td>1</td><td>1234567</td><td>250</td><td>80</td><td>90</td><td>80</td>"
-        "<td>10</td><td>Да</td><td>1</td><td>Подано</td><td>Да</td><td>-</td></tr>"
+        "<td>10</td><td>1</td><td>Да</td><td>Участвует в конкурсе</td>"
+        "<td>Да</td><td>-</td></tr>"
     )
     row2 = (
         "<tr><td>2</td><td>7654321</td><td>240</td><td>78</td><td>85</td><td>77</td>"
-        "<td>5</td><td>Нет</td><td>2</td><td>Подано</td><td>Нет</td><td>-</td></tr>"
+        "<td>5</td><td>2</td><td>Нет</td><td>Участвует в конкурсе</td>"
+        "<td>Нет</td><td>-</td></tr>"
     )
     return (
         "<html><body>"

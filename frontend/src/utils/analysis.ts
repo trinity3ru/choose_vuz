@@ -12,21 +12,33 @@ export interface HistogramBin {
   count: number;
 }
 
-// Оставить заявления с указанными приоритетами.
-// Пустой набор приоритетов = показать все заявления.
+// Фильтр по согласию на зачисление:
+// all — все заявления, with — только с согласием, without — только без него.
+export type AgreementFilter = "all" | "with" | "without";
+
+// Оставить заявления с указанными приоритетами и нужным статусом согласия.
+// Пустой набор приоритетов = показать все приоритеты.
 // Заявления с нулевым баллом (нет результатов ЕГЭ) исключаются всегда,
 // иначе они искажают средний и проходной балл.
-export function filterByPriorities(
+export function filterApplicants(
   applicants: Applicant[],
   priorities: Set<number>,
+  agreement: AgreementFilter = "all",
 ): Applicant[] {
-  const withScore = applicants.filter(
+  let rows = applicants.filter(
     (a) => a.total_score !== null && a.total_score > 0,
   );
-  if (priorities.size === 0) return withScore;
-  return withScore.filter(
-    (a) => a.priority !== null && priorities.has(a.priority),
-  );
+  if (priorities.size > 0) {
+    rows = rows.filter((a) => a.priority !== null && priorities.has(a.priority));
+  }
+  if (agreement === "with") rows = rows.filter((a) => a.has_agreement);
+  if (agreement === "without") rows = rows.filter((a) => !a.has_agreement);
+  return rows;
+}
+
+// Сколько заявлений с поданным согласием на зачисление.
+export function countWithAgreement(applicants: Applicant[]): number {
+  return applicants.filter((a) => a.has_agreement).length;
 }
 
 // Все приоритеты, встречающиеся в данных (для чекбоксов), по возрастанию.

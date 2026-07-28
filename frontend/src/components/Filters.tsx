@@ -1,6 +1,7 @@
-// Панель фильтров: вуз, направление, приоритеты, свой балл.
+// Панель фильтров: вуз, направление, приоритеты, согласие, свой балл.
 
 import type { UniversityInfo } from "../types";
+import type { AgreementFilter } from "../utils/analysis";
 
 interface Props {
   universities: UniversityInfo[];
@@ -8,13 +9,25 @@ interface Props {
   selectedMajor: string | null;
   availablePriorities: number[];
   selectedPriorities: Set<number>;
+  agreementFilter: AgreementFilter;
+  // Сколько заявлений с согласием есть в направлении (0 = вуз их не публикует
+  // или их пока никто не подал — тогда предупреждаем, что фильтр всё скроет).
+  agreementCount: number;
   userScore: number | null;
   onUniversityChange: (code: string) => void;
   onMajorChange: (code: string) => void;
   onTogglePriority: (priority: number) => void;
   onResetPriorities: () => void;
+  onAgreementFilterChange: (value: AgreementFilter) => void;
   onUserScoreChange: (score: number | null) => void;
 }
+
+// Подписи переключателя согласия.
+const AGREEMENT_OPTIONS: { value: AgreementFilter; label: string }[] = [
+  { value: "all", label: "Все" },
+  { value: "with", label: "С согласием" },
+  { value: "without", label: "Без согласия" },
+];
 
 export function Filters(props: Props) {
   const {
@@ -23,11 +36,14 @@ export function Filters(props: Props) {
     selectedMajor,
     availablePriorities,
     selectedPriorities,
+    agreementFilter,
+    agreementCount,
     userScore,
     onUniversityChange,
     onMajorChange,
     onTogglePriority,
     onResetPriorities,
+    onAgreementFilterChange,
     onUserScoreChange,
   } = props;
 
@@ -106,6 +122,38 @@ export function Filters(props: Props) {
                   onChange={() => onTogglePriority(p)}
                 />
                 Приоритет {p}
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="field">
+        <span className="field-label">Согласие на зачисление</span>
+        <p className="field-hint">
+          {agreementCount > 0
+            ? `В выборке с согласием — ${agreementCount} заявл. Это те, кто реально претендует на место.`
+            : "По этому направлению согласий пока нет — фильтр оставит список пустым."}
+        </p>
+        <div
+          className="priority-list"
+          role="radiogroup"
+          aria-label="Согласие на зачисление"
+        >
+          {AGREEMENT_OPTIONS.map((option) => {
+            const checked = agreementFilter === option.value;
+            return (
+              <label
+                key={option.value}
+                className={`priority-chip${checked ? " priority-chip--on" : ""}`}
+              >
+                <input
+                  type="radio"
+                  name="agreement-filter"
+                  checked={checked}
+                  onChange={() => onAgreementFilterChange(option.value)}
+                />
+                {option.label}
               </label>
             );
           })}

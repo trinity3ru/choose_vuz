@@ -9,12 +9,14 @@ import { Summary } from "./components/Summary";
 import { useApplicantData } from "./hooks/useApplicantData";
 import { useParserHealth } from "./hooks/useParserHealth";
 import type { ParserHealthUniversity, UniversityInfo } from "./types";
+import type { AgreementFilter } from "./utils/analysis";
 import {
   availablePriorities,
   averageScore,
   buildHistogram,
+  countWithAgreement,
   cutoffScore,
-  filterByPriorities,
+  filterApplicants,
   rankOfScore,
 } from "./utils/analysis";
 
@@ -50,6 +52,8 @@ export default function App() {
   const [selectedPriorities, setSelectedPriorities] = useState<Set<number>>(
     new Set(),
   );
+  const [agreementFilter, setAgreementFilter] =
+    useState<AgreementFilter>("all");
   const [userScore, setUserScore] = useState<number | null>(null);
 
   const health = useParserHealth();
@@ -101,7 +105,14 @@ export default function App() {
   );
 
   const filtered = useMemo(
-    () => filterByPriorities(applicants, selectedPriorities),
+    () => filterApplicants(applicants, selectedPriorities, agreementFilter),
+    [applicants, selectedPriorities, agreementFilter],
+  );
+
+  // Согласия считаем до фильтра по согласию, но с учётом приоритетов —
+  // иначе в режиме «с согласием» подсказка всегда равнялась бы размеру списка.
+  const agreementCount = useMemo(
+    () => countWithAgreement(filterApplicants(applicants, selectedPriorities)),
     [applicants, selectedPriorities],
   );
 
@@ -121,11 +132,13 @@ export default function App() {
     const uni = universities.find((u) => u.code === code);
     setSelectedMajor(uni?.majors[0]?.code ?? null);
     setSelectedPriorities(new Set());
+    setAgreementFilter("all");
   }
 
   function handleMajorChange(code: string) {
     setSelectedMajor(code);
     setSelectedPriorities(new Set());
+    setAgreementFilter("all");
   }
 
   function togglePriority(priority: number) {
@@ -141,6 +154,13 @@ export default function App() {
     selectedPriorities.size === 0
       ? "все приоритеты"
       : `приоритеты ${[...selectedPriorities].sort((a, b) => a - b).join(", ")}`;
+
+  const agreementNote =
+    agreementFilter === "with"
+      ? "только с согласием"
+      : agreementFilter === "without"
+        ? "только без согласия"
+        : "с согласием и без";
 
   return (
     <div className="app">
@@ -207,11 +227,14 @@ export default function App() {
               selectedMajor={selectedMajor}
               availablePriorities={priorities}
               selectedPriorities={selectedPriorities}
+              agreementFilter={agreementFilter}
+              agreementCount={agreementCount}
               userScore={userScore}
               onUniversityChange={handleUniversityChange}
               onMajorChange={handleMajorChange}
               onTogglePriority={togglePriority}
               onResetPriorities={() => setSelectedPriorities(new Set())}
+              onAgreementFilterChange={setAgreementFilter}
               onUserScoreChange={setUserScore}
             />
 
@@ -236,6 +259,7 @@ export default function App() {
                     userScore={userScore}
                     userRank={userRank}
                     totalApplicants={filtered.length}
+                    agreementApplicants={agreementCount}
                     stats={data.stats}
                   />
 
@@ -244,7 +268,7 @@ export default function App() {
                       <h2>{data.major.name}</h2>
                       <span className="panel-sub">
                         {data.major.code} · {filtered.length} заявлений ·{" "}
-                        {priorityNote}
+                        {priorityNote} · {agreementNote}
                       </span>
                     </div>
                     <HistogramChart
