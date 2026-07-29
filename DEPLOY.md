@@ -130,8 +130,39 @@ systemctl list-timers 'university-*'
 
 Создаёт: ночные слоты по вузу (00:30, 01:00, … шаг 30 мин — из `backend/config.json`),
 recover зависших задач каждые 15 мин, почасовой health-check (stale-алерты),
-ежедневный backup в 07:30. Пересоздать с другим графиком:
-`sudo bash scripts/install-timers.sh --start 01:00 --step 20`. Снять всё: `--uninstall`.
+ежедневный backup в 07:30 и чистку старых снимков в 07:45. Пересоздать с другим
+графиком: `sudo bash scripts/install-timers.sh --start 01:00 --step 20`.
+Снять всё: `--uninstall`.
+
+### Частое обновление отдельных вузов
+
+По умолчанию вуз парсится раз в сутки в своём слоте. Чтобы обновлять чаще,
+добавьте вузу в `backend/config.json` поле `parse_interval_hours` (1–24):
+
+```json
+{
+  "code": "SPBSTU",
+  "parser_type": "playwright",
+  "enabled": true,
+  "parse_interval_hours": 4,
+  "majors": [ ... ]
+}
+```
+
+Такой вуз повторяется каждые N часов от своего слота: слот 00:30 при N=4 даёт
+00:30, 04:30, 08:30, 12:30, 16:30, 20:30 (`OnCalendar=*-*-* 00/4:30:00`).
+После правки конфига таймеры надо перегенерировать:
+
+```bash
+cd /opt/university
+sudo bash scripts/install-timers.sh
+systemctl list-timers 'university-*'
+```
+
+Учтите объём: один полный срез вуза — это все строки его списков в таблице
+`applicants` (напр. СПбПУ ≈ 108 тыс. строк, ВШЭ-Москва ≈ 163 тыс.). Шесть
+запусков в сутки дают шестикратный рост. Держите `SNAPSHOT_RETENTION_DAYS`
+в `.env` адекватным диску и следите, что таймер `university-cleanup` включён.
 
 ## 9. Ручной запуск парсера
 

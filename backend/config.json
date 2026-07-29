@@ -6,6 +6,7 @@
       "url": "https://my.spbstu.ru/home/abit/list-applicants/bachelor",
       "parser_type": "playwright",
       "enabled": true,
+      "parse_interval_hours": 4,
       "majors": [
         {
           "code": "01.03.02",
@@ -544,6 +545,7 @@
       "url": "https://priemsamara.ru/ratings/",
       "parser_type": "http",
       "enabled": true,
+      "parse_interval_hours": 4,
       "majors": [
         {"code": "01.03.02", "name": "Прикладная математика и информатика", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "2"},
         {"code": "01.03.03", "name": "Механика и математическое моделирование", "params": {"study_form": "Очная", "finance_type": "Бюджетная основа"}, "external_id": "3"},
@@ -2257,6 +2259,7 @@
       "url": "https://pk.hse.ru/admissions/bak/BD/applicants",
       "parser_type": "http",
       "enabled": true,
+      "parse_interval_hours": 4,
       "majors": [
         {
           "code": "03.03.02",

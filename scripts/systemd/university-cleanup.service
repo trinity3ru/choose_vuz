@@ -1,0 +1,15 @@
+# VuzFinder: удаление снимков старше SNAPSHOT_RETENTION_DAYS (ТЗ §16).
+#
+# Выполняется через api-контейнер (DB-only, без Playwright). Особенно важно
+# для вузов с parse_interval_hours < 24: они дают несколько полных срезов
+# в сутки, и без retention таблица applicants растёт линейно по времени.
+
+[Unit]
+Description=VuzFinder: cleanup old parse snapshots
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/university
+ExecStart=/usr/bin/docker compose exec -T api python -m app.cli cleanup-snapshots

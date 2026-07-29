@@ -63,6 +63,11 @@ class UniversityConfig(BaseModel):
     # Обязательное поле: явный контроль, какие вузы требуют браузер.
     parser_type: ParserType
     enabled: bool = True
+    # Как часто запускать парсер вуза, в часах (24 = раз в сутки).
+    # Читается генератором systemd-таймеров (scripts/install-timers.sh):
+    # вуз с интервалом 4 парсится каждые 4 часа от своего ночного слота,
+    # остальные — один раз в свой слот. На сам парсинг поле не влияет.
+    parse_interval_hours: int = Field(default=24, ge=1, le=24)
     majors: list[MajorConfig] = Field(..., min_length=1)
 
 

@@ -12,7 +12,9 @@
 #    подставляя фактический каталог проекта вместо /opt/university;
 # 2) генерирует по одному таймеру university-parser@<CODE>.timer на каждый
 #    включённый вуз из backend/config.json, разнося их по ночным слотам
-#    (ТЗ §9.1: 00:30 — вуз 1, 01:00 — вуз 2, ...);
+#    (ТЗ §9.1: 00:30 — вуз 1, 01:00 — вуз 2, ...); вуз с полем
+#    "parse_interval_hours": N (N < 24) повторяется каждые N часов от своего
+#    слота — напр. слот 00:30 и N=4 дают 00:30, 04:30, 08:30, ... 20:30;
 # 3) systemctl daemon-reload + enable --now для всех таймеров.
 #
 # Тестовый прогон без systemd (генерация в каталог, без systemctl):
@@ -43,13 +45,17 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Коды включённых вузов из config.json (порядок как в файле).
+# Включённые вузы из config.json (порядок как в файле): строки «КОД ИНТЕРВАЛ»,
+# где интервал — parse_interval_hours (24 = раз в сутки).
 # PYTHON — переопределение интерпретатора (для локального dry-run на Windows).
-codes=$(cd "$PROJECT_DIR" && "${PYTHON:-python3}" -c "
+config_rows=$(cd "$PROJECT_DIR" && "${PYTHON:-python3}" -c "
 import json
 cfg = json.load(open('backend/config.json', encoding='utf-8'))
-print(' '.join(u['code'] for u in cfg['universities'] if u.get('enabled', True)))
-")
+for u in cfg['universities']:
+    if u.get('enabled', True):
+        print(u['code'], int(u.get('parse_interval_hours', 24)))
+" | tr -d '\r')  # tr — на случай CRLF от интерпретатора под Windows (DRY_RUN)
+codes=$(echo "$config_rows" | awk '{print $1}')
 
 if [[ "$UNINSTALL" == "1" ]]; then
     echo "Снимаю таймеры VuzFinder..."
@@ -58,11 +64,12 @@ if [[ "$UNINSTALL" == "1" ]]; then
         rm -f "$UNIT_DST/university-parser@$code.timer"
     done
     systemctl disable --now university-recover.timer university-health-check.timer \
-        university-backup.timer 2>/dev/null || true
+        university-backup.timer university-cleanup.timer 2>/dev/null || true
     rm -f "$UNIT_DST"/university-parser@.service \
           "$UNIT_DST"/university-recover.{service,timer} \
           "$UNIT_DST"/university-health-check.{service,timer} \
-          "$UNIT_DST"/university-backup.{service,timer}
+          "$UNIT_DST"/university-backup.{service,timer} \
+          "$UNIT_DST"/university-cleanup.{service,timer}
     systemctl daemon-reload
     echo "Готово."
     exit 0
@@ -75,29 +82,45 @@ for unit in "$UNIT_SRC"/*.service "$UNIT_SRC"/*.timer; do
 done
 
 # 2) Пер-вузовые таймеры со сдвигом по слотам.
+# Вузы с parse_interval_hours < 24 повторяются каждые N часов от своего слота:
+# час слота приводится к первому запуску суток (hh % N), дальше systemd сам
+# идёт с шагом N (OnCalendar=*-*-* 00/4:30:00 -> 00:30, 04:30, ..., 20:30).
 start_minutes=$(( 10#${START%%:*} * 60 + 10#${START##*:} ))
 index=0
-echo "Расписание ночных запусков (старт $START, шаг $STEP_MIN мин):"
-for code in $codes; do
+echo "Расписание запусков (старт $START, шаг $STEP_MIN мин):"
+while read -r code interval; do
+    [[ -z "$code" ]] && continue
     total=$(( start_minutes + index * STEP_MIN ))
-    hh=$(printf "%02d" $(( (total / 60) % 24 )))
+    hour=$(( (total / 60) % 24 ))
     mm=$(printf "%02d" $(( total % 60 )))
     index=$(( index + 1 ))
 
+    if (( interval >= 24 )); then
+        hh=$(printf "%02d" "$hour")
+        on_calendar="*-*-* $hh:$mm:00"
+        description="nightly parse of $code at $hh:$mm"
+        human="$hh:$mm  $code (раз в сутки)"
+    else
+        base=$(printf "%02d" $(( hour % interval )))
+        on_calendar="*-*-* $base/$interval:$mm:00"
+        description="parse of $code every ${interval}h from $base:$mm"
+        human="$base:$mm  $code (каждые $interval ч)"
+    fi
+
     cat > "$UNIT_DST/university-parser@$code.timer" <<EOF
-# Сгенерировано scripts/install-timers.sh — ночной слот вуза $code.
+# Сгенерировано scripts/install-timers.sh — слот вуза $code.
 [Unit]
-Description=VuzFinder: nightly parse of $code at $hh:$mm
+Description=VuzFinder: $description
 
 [Timer]
-OnCalendar=*-*-* $hh:$mm:00
+OnCalendar=$on_calendar
 Persistent=true
 
 [Install]
 WantedBy=timers.target
 EOF
-    echo "  $hh:$mm  $code"
-done
+    echo "  $human"
+done <<< "$config_rows"
 
 # 3) Включение.
 systemctl daemon-reload
@@ -105,8 +128,8 @@ for code in $codes; do
     systemctl enable --now "university-parser@$code.timer"
 done
 systemctl enable --now university-recover.timer university-health-check.timer \
-    university-backup.timer
+    university-backup.timer university-cleanup.timer
 
 echo ""
 systemctl list-timers 'university-*' --no-pager || true
-echo "Готово: $(echo $codes | wc -w) вузов + recover + health-check + backup."
+echo "Готово: $(echo $codes | wc -w) вузов + recover + health-check + backup + cleanup."
